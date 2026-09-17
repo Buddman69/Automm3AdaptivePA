@@ -8,8 +8,8 @@
 #
 # WHY THE ORIGINAL DESIGN COULD NOT WORK
 #   The original design specified an `area` primitive: apply a candidate K,
-#   the integrated residual against an ideal force step, and search for the K
-#   where it vanishes. That requires Klipper to actually apply K. It does not.
+#   measure the integrated residual against an ideal force step, and search for
+#   the K where it vanishes. That requires Klipper to actually apply K. It does not.
 #   From this machine's own klippy/kinematics/extruder.py:
 #
 #       can_pressure_advance = False
@@ -63,8 +63,12 @@
 #   purge chute, with you at the machine. Same envelope as Stage 1 -
 #   force abort on MAGNITUDE at 1650 gf above a fresh tare (melt pressure is
 #   negative; a signed comparison here is the bug that made Stage 1's first
-#   ceiling unfirable), variance abort, volume-based wiping, filtration on, and
-#   retract/wipe/cooldown on every exit path including exceptions.
+#   ceiling unfirable), variance abort, volume-based wiping, and retract/wipe on
+#   every exit path including exceptions.
+#
+#   It does NOT switch the air filter or the hotend off - an earlier version of
+#   this comment claimed it did. Whoever runs the chain owns the shutdown, so
+#   that a stage finishing does not cool the nozzle out from under the next one.
 #
 #   An unhandled exception in a gcode command is a Klipper INTERNAL ERROR and
 #   shuts down every MCU. Everything is wrapped so that cannot happen, and the
@@ -73,7 +77,9 @@
 # USAGE
 #   [qidi_pa_measure]
 #
-#   QIDI_PA_MEASURE                      all five envelope points
+#   QIDI_PA_MEASURE TEMP=275             heat, wait, then measure
+#   QIDI_PA_MEASURE                      all envelope points, nozzle
+#                                        must already be hot
 #   QIDI_PA_MEASURE DRY=1                print the plan, no heat, no motion
 #   QIDI_PA_MEASURE POINT=centre         one point only
 #   QIDI_PA_MEASURE FLOW=9.75 ACCEL=5000 an explicit point
@@ -627,6 +633,24 @@ class QidiPAMeasure:
         if mcu is None:
             raise gcmd.error("pa: cannot reach the sensor MCU")
         toolhead = self.printer.lookup_object('toolhead')
+
+        # TEMP=, if given, is SET AND WAITED FOR rather than merely checked.
+        #
+        # This used to only check, and refuse when cold. That made the whole
+        # stage depend on an invisible precondition - "somebody left the nozzle
+        # hot" - and on 2026-09-17 the chain broke it: Stage 1 shut the hotend
+        # down at the end of its own run, Stage 3 started 18 s later while the
+        # check still passed at ~270 C, and the nozzle kept falling underneath
+        # the measurement. The lowest flow point, 2.92 mm3/s, hit the force
+        # abort at 1662 gf - more force cold than 23 mm3/s made hot.
+        #
+        # Checking a temperature at the start says nothing about what it will be
+        # a minute later. Setting it is what makes the stage correct on its own.
+        target = gcmd.get_float('TEMP', None, above=150., below=350.)
+        if target is not None:
+            gcmd.respond_info("pa: heating to %.0f C and waiting" % (target,))
+            self.gcode.run_script_from_command("M109 S%.0f" % (target,))
+
         extruder = self.printer.lookup_object('extruder', None)
         temp = 0.0
         if extruder is not None:
@@ -636,9 +660,9 @@ class QidiPAMeasure:
             except Exception:
                 temp = 0.0
         if temp < MIN_EXTRUDE_TEMP:
-            raise gcmd.error("pa: nozzle is %.0f C - heat it to printing "
-                             "temperature first (this routine does not set "
-                             "temperature)" % (temp,))
+            raise gcmd.error("pa: nozzle is %.0f C - pass TEMP= to have this "
+                             "heat it, or heat it to printing temperature "
+                             "first" % (temp,))
         # The wipe and the chute move are absolute X moves, and extruding
         # anywhere other than the chute is safety rule 5 territory.
         if 'xyz' not in (toolhead.get_status(self.reactor.monotonic())

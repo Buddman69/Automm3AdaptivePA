@@ -105,6 +105,10 @@ DEFAULT_POINTS = 5
 COOLDOWN_WIPE_C = 170.0
 COOLDOWN_TIMEOUT_S = 600.0
 
+# The chamber air filter, same fan Stage 1 uses. Stage 1 no longer switches it
+# off mid-chain, so this module does it at the very end.
+FILTER_M106_P = 3
+
 BANNER = "Buddman69's Auto Test Results"
 FOOTER = ("End Results - project probably maybe on github when I get around "
           "to it possibly......")
@@ -227,8 +231,13 @@ class QidiAutoCal:
             self._script("TEMPERATURE_WAIT SENSOR=extruder MAXIMUM=%.0f"
                          % (self.cooldown_c,))
             self._script("QIDI_FLOW_WIPE")
-            gcmd.respond_info("auto_cal: cooldown wipe done at %.0f C"
-                              % (self._temp(),))
+            # Stage 1 is told COOLDOWN=0 so the nozzle stays hot for Stage 3,
+            # which also leaves its air filter running. Switching it off is
+            # therefore this module's job, and it happens last - after the
+            # nozzle is down to wipe temperature and has stopped outgassing.
+            self._script("M106 P%d S0" % (FILTER_M106_P,))
+            gcmd.respond_info("auto_cal: cooldown wipe done at %.0f C, "
+                              "air filtration off" % (self._temp(),))
             return True
         except Exception as e:
             gcmd.respond_info("auto_cal: cooldown wipe skipped (%s)"
@@ -306,17 +315,17 @@ class QidiAutoCal:
             gcmd.respond_info("auto_cal: DRY - showing the plan only")
             for step in ("0  G28  (skipped if already homed; HOME=1 forces "
                          "it, HOME=0 skips it)",
-                         "1  QIDI_FLOW_SEARCH TEMP=%.0f" % temp,
+                         "1  QIDI_FLOW_SEARCH TEMP=%.0f COOLDOWN=0  (stays hot for Stage 3)" % temp,
                          "2  QIDI_FLOW_WIPE",
                          "3  QIDI_PA_ENVELOPE POINTS=%d AMP=%.2f%s"
                          % (pts, amp, geom),
-                         "4  QIDI_PA_MEASURE BLOCKS=%d AMP=%.2f LEG_MS=%.0f"
-                         % (blocks, amp, leg),
+                         "4  QIDI_PA_MEASURE TEMP=%.0f BLOCKS=%d AMP=%.2f "
+                         "LEG_MS=%.0f" % (temp, blocks, amp, leg),
                          "5  QIDI_FLOW_WIPE",
                          "6  QIDI_PA_TABLE RUNS=1",
                          "7  M104 S0",
-                         "8  TEMPERATURE_WAIT MAXIMUM=%.0f then QIDI_FLOW_WIPE"
-                         % self.cooldown_c):
+                         "8  TEMPERATURE_WAIT MAXIMUM=%.0f, QIDI_FLOW_WIPE, "
+                         "air filtration off" % self.cooldown_c):
                 gcmd.respond_info("   " + step)
             gcmd.respond_info("auto_cal: DRY - nothing heated, nothing moved.")
             return
@@ -334,7 +343,15 @@ class QidiAutoCal:
             if not skip_flow:
                 stage = "Stage 1 (QIDI_FLOW_SEARCH)"
                 gcmd.respond_info("auto_cal: ---- Stage 1: max flow ----")
-                self._script("QIDI_FLOW_SEARCH TEMP=%.0f" % (temp,))
+                # COOLDOWN=0 is not optional here. Stage 1 shuts the hotend and
+                # the air filter down at the end of its own run, which is right
+                # when it is run on its own and WRONG in a chain: Stage 3 does
+                # not set temperature, so it would extrude into a nozzle that
+                # had been cooling for a minute. That happened on 2026-09-17 -
+                # the lowest flow point, 2.92 mm3/s, hit the 1650 gf abort at
+                # 1662 gf, having made more force cold than 23 mm3/s made hot.
+                # This module owns the shutdown; see _cooldown_wipe.
+                self._script("QIDI_FLOW_SEARCH TEMP=%.0f COOLDOWN=0" % (temp,))
                 self._script("QIDI_FLOW_WIPE")
             flow = self._read_json('flow_ramp.json', gcmd, stage)
             qmax = flow.get('working_max')
@@ -354,8 +371,11 @@ class QidiAutoCal:
             # ---- Stage 3 : pressure advance -----------------------------
             stage = "Stage 3 (QIDI_PA_MEASURE)"
             gcmd.respond_info("auto_cal: ---- Stage 3: pressure advance ----")
-            self._script("QIDI_PA_MEASURE BLOCKS=%d AMP=%.2f LEG_MS=%.0f"
-                         % (blocks, amp, leg))
+            # TEMP is passed even though Stage 1 has already left the nozzle
+            # hot. It costs nothing when the temperature is already there, and
+            # it means Stage 3 no longer depends on that being true.
+            self._script("QIDI_PA_MEASURE TEMP=%.0f BLOCKS=%d AMP=%.2f "
+                         "LEG_MS=%.0f" % (temp, blocks, amp, leg))
             self._script("QIDI_FLOW_WIPE")
 
             # ---- Stage 4 : the Orca table -------------------------------

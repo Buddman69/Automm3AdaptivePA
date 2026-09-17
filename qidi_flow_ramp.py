@@ -692,7 +692,12 @@ class QidiFlowRamp:
                 logging.exception("qidi_flow_ramp: cooldown failed")
                 gcmd.respond_info("flow_ramp: WARNING could not turn the "
                                   "hotend off - do it manually")
-        if filt:
+        # Filtration goes off only when the hotend does. COOLDOWN=0 means "I am
+        # not finished with the machine" - another stage is about to extrude -
+        # and a hot nozzle keeps outgassing whether or not this module is the
+        # one using it. Turning the filter off while the next stage runs would
+        # be the wrong half of a shutdown.
+        if filt and cooldown:
             self._filter(gcmd, False)
 
     def _hotend_temp(self):

@@ -127,7 +127,13 @@ QIDI_AUTO_CALIBRATE TEMP=265 BLOCKS=20 POINTS=7
 7  build the Orca table
 8  heater off
 9  wait for 170 C, then wipe again
+10 air filtration off
 ```
+
+**The nozzle stays hot from step 1 to step 8.** Nothing in the middle switches
+it off — each stage could shut the machine down at the end of its own run, and
+one of them used to, which left the PA measurement extruding into a cooling
+nozzle. Whichever routine you start owns the shutdown, and it happens last.
 
 **Step 0 is also the load-cell check.** Z homes through the load cell, so a home
 proves end-to-end that the cell responds to force: a cell stuck triggered makes
