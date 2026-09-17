@@ -1,0 +1,40 @@
+# Build output. The .exe is ~15 MB and is rebuilt on every change, so committing
+# it would put a fresh binary blob in git history each time and the repo would
+# grow without bound. Attach it to a GitHub RELEASE instead: the repo stays
+# small and users still get a download button.
+dist/
+build/
+*.spec
+*.exe
+
+# Release bundles - assembled from the repo, not tracked in it.
+*.zip
+
+__pycache__/
+*.pyc
+
+# Measurement output, if a copy is ever pulled off the printer to look at.
+qidi_pa/
+*.json
+!thr_dict_*.json
+
+# INTERNAL NOTES - not for publication.
+# Working records, design memos and machine-specific detail (SSH paths, this
+# printer's address). The published source deliberately refers to none of these,
+# so nothing in the repo dangles when they are absent.
+CLAUDE.md
+NEXT_SESSION.md
+PLAN.md
+FINDINGS.md
+HARDWARE_MAP.md
+STAGE1_DESIGN.md
+STAGE1_SEARCH_DESIGN.md
+STAGE2_DESIGN.md
+STAGE3_DESIGN.md
+
+# Firmware reverse-engineering tooling - not needed to calibrate.
+qidi_fw_dict.py
+thr_dict_*.json
+
+# Superseded, never installed.
+qidi_pa_discover.py
