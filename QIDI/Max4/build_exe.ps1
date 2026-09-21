@@ -84,3 +84,10 @@ $size = [math]::Round((Get-Item $exe).Length / 1MB, 1)
 Write-Host ""
 Write-Host "built $exe  ($size MB)" -ForegroundColor Green
 Write-Host "Give people this one file - everything is inside it."
+Write-Host ""
+Write-Host "A COPY OF THIS FILE IS ALSO TRACKED IN GIT, at the repo root of" -ForegroundColor Yellow
+Write-Host "this folder (QIDI-Max4-Calibration-Installer.exe) - this build" -ForegroundColor Yellow
+Write-Host "only wrote dist\, it did NOT update that tracked copy or the" -ForegroundColor Yellow
+Write-Host "GitHub Release asset. After a real change, copy dist\$Name.exe" -ForegroundColor Yellow
+Write-Host "over it, commit, and re-upload to the release, or the three" -ForegroundColor Yellow
+Write-Host "will quietly drift out of sync." -ForegroundColor Yellow
