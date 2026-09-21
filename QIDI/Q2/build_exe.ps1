@@ -1,12 +1,16 @@
-# build_exe.ps1 - build the Windows installer executable
+# build_exe.ps1 - build the Windows installer executable (Q2 build)
 #
 # Copyright (C) 2026  Budd
 # Licensed under PolyForm Strict 1.0.0 - see LICENSE.md.
 #
 #   .\build_exe.ps1
 #
-# Produces dist\QIDI-Calibration-Installer.exe - one file, no Python needed on
-# the machine that runs it.
+# Produces dist\QIDI-Q2-Calibration-Installer.exe - one file, no Python needed
+# on the machine that runs it.
+#
+# THIS FOLDER IS A SEPARATE PROJECT FROM THE X-MAX 4 BUILD. It was copied from
+# the X-Max 4 sources and altered for the Q2 (see the "QIDI Q2 BUILD" banner in
+# each module). The two folders do not share state and are never cross-edited.
 #
 # WHY THE MODULES ARE BUNDLED IN
 #   --add-data puts every klippy extra and printer_setup.sh INSIDE the exe.
@@ -26,7 +30,7 @@
 $ErrorActionPreference = "Stop"
 Set-Location -Path $PSScriptRoot
 
-$Name = "QIDI-Calibration-Installer"
+$Name = "QIDI-Q2-Calibration-Installer"
 
 $Modules = @(
     "qidi_flow_ramp.py", "qidi_pa_envelope.py", "qidi_pa_measure.py",
@@ -81,3 +85,10 @@ $size = [math]::Round((Get-Item $exe).Length / 1MB, 1)
 Write-Host ""
 Write-Host "built $exe  ($size MB)" -ForegroundColor Green
 Write-Host "Give people this one file - everything is inside it."
+Write-Host ""
+Write-Host "A COPY OF THIS FILE IS ALSO TRACKED IN GIT, at the repo root of" -ForegroundColor Yellow
+Write-Host "this folder (QIDI-Q2-Calibration-Installer.exe) - this build" -ForegroundColor Yellow
+Write-Host "only wrote dist\, it did NOT update that tracked copy or the" -ForegroundColor Yellow
+Write-Host "GitHub Release asset. After a real change, copy dist\$Name.exe" -ForegroundColor Yellow
+Write-Host "over it, commit, and re-upload to the release, or the three" -ForegroundColor Yellow
+Write-Host "will quietly drift out of sync." -ForegroundColor Yellow

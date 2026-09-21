@@ -233,7 +233,7 @@ def main():
     out = g.run('QIDI_FLOW_RAMP', STEPS=8, QMIN=2.0, QMAX=9.98, HZ=30)
     text = "\n".join(out)
     ok &= check("moved to the purge chute first",
-                any('OPTIMIZED_MOVE_TO_TRASH' in x for x in g.scripts),
+                any('MOVE_TO_TRASH' in x for x in g.scripts),
                 str(g.scripts[:3]))
     ok &= check("heated before taring",
                 p.lookup_object('heaters').calls[0][0] == 275.0,
@@ -286,17 +286,17 @@ def main():
                 "\n".join(g.output)[-200:])
     ok &= check("still retracted, wiped and cooled after a prime abort",
                 any('E-2.000' in x for x in g.scripts)
-                and any('X180.00' in x for x in g.scripts)
+                and any('X115.00' in x for x in g.scripts)
                 and p.lookup_object('heaters').calls[-1][0] == 0.,
                 str(p.lookup_object('heaters').calls))
 
     print("\n== finish: wipe on the silicone wiper, hotend off ==")
     g, mod, s, th, p = build(tmp)
     g.run('QIDI_FLOW_RAMP', STEPS=3, QMIN=2.0, QMAX=4.0, HZ=30, PRIME=0)
-    wipes = [x for x in g.scripts if 'X180.00' in x]
+    wipes = [x for x in g.scripts if 'X115.00' in x]
     ok &= check("sweeps the full wiper travel and returns to park_x",
-                bool(wipes) and wipes[0].count('X180.00') == FR.WIPE_PASSES
-                and wipes[0].rstrip().endswith('X135.00 F6000'),
+                bool(wipes) and wipes[0].count('X115.00') == FR.WIPE_PASSES
+                and wipes[0].rstrip().endswith('X85.00 F6000'),
                 (wipes[0] if wipes else 'no wipe issued'))
     ok &= check("default travel is wider than QIDI's +8..+27",
                 FR.WIPE_HI_OFFSET - FR.WIPE_LO_OFFSET > 19.0,
@@ -308,7 +308,7 @@ def main():
     g.run('QIDI_FLOW_RAMP', STEPS=3, QMIN=2.0, QMAX=4.0, HZ=30, PRIME=0,
           WIPE=0, COOLDOWN=0)
     ok &= check("WIPE=0 COOLDOWN=0 suppress both",
-                not any('X180.00' in x for x in g.scripts)
+                not any('X115.00' in x for x in g.scripts)
                 and p.lookup_object('heaters').calls[-1][0] != 0.,
                 str(p.lookup_object('heaters').calls))
 
@@ -334,7 +334,7 @@ def main():
                 and not any('E-' in x for x in g.scripts),
                 str(g.scripts))
     ok &= check("and moves to the chute first",
-                any('OPTIMIZED_MOVE_TO_TRASH' in x for x in g.scripts),
+                any('MOVE_TO_TRASH' in x for x in g.scripts),
                 str(g.scripts[:2]))
 
     print("\n== sweep plan: up then down, with repeats ==")
@@ -381,7 +381,7 @@ def main():
     ok &= check("retract issued despite the failure",
                 any('E-2.000' in x for x in g.scripts), str(g.scripts[-2:]))
     ok &= check("wiped despite the failure",
-                any('X180.00' in x for x in g.scripts), str(g.scripts[-2:]))
+                any('X115.00' in x for x in g.scripts), str(g.scripts[-2:]))
     ok &= check("hotend still turned off despite the failure",
                 p.lookup_object('heaters').calls[-1][0] == 0.,
                 str(p.lookup_object('heaters').calls))
@@ -459,7 +459,7 @@ def main():
     ok &= check("and names which flows they were",
                 '3 distinct flows' in t3, t3[-500:])
     ok &= check("still wiped and cooled after giving up",
-                any('X180.00' in x for x in g.scripts)
+                any('X115.00' in x for x in g.scripts)
                 and p.lookup_object('heaters').calls[-1][0] == 0.,
                 str(p.lookup_object('heaters').calls))
 
@@ -493,8 +493,8 @@ def main():
     ok &= check("both legs announce a wipe and prime",
                 text.count('wipe and prime') == 2, str(text.count('wipe and prime')))
     ok &= check("a wipe is issued per leg, not just at the end",
-                len([x for x in g.scripts if 'X180.00' in x]) >= 3,
-                str(len([x for x in g.scripts if 'X180.00' in x])))
+                len([x for x in g.scripts if 'X115.00' in x]) >= 3,
+                str(len([x for x in g.scripts if 'X115.00' in x])))
     ok &= check("each leg primes before measuring",
                 text.count('prime Q=') >= 2 or text.count('prime') >= 2, text[:400])
 
@@ -551,7 +551,7 @@ def main():
     ok &= check("retract in the finally still ran",
                 any('E-2.000' in x for x in g.scripts), str(g.scripts[-4:]))
     ok &= check("wipe in the finally still ran",
-                any('X180.00' in x for x in g.scripts), str(g.scripts[-4:]))
+                any('X115.00' in x for x in g.scripts), str(g.scripts[-4:]))
     ok &= check("hotend was still turned off",
                 p.lookup_object('heaters').calls[-1][0] == 0.,
                 str(p.lookup_object('heaters').calls))

@@ -8,7 +8,7 @@
 #   query_cs1237_read reaches ~312 Hz against read_origin_data()'s 91, with a
 #   ~0 group delay instead of 0-5.1 ms. Stage 3 wants it. But
 #   every safety number this project has - the 1650 gf abort, the 35 gf variance
-#   abort, 182.96 counts/gf - was established through read_origin_data(). The
+#   abort, 201 counts/gf on this Q2 - was established through read_origin_data(). The
 #   raw command skips whatever those 8 ms do, possibly including cs_fil_f = 0.9
 #   and drift compensation.
 #
@@ -61,7 +61,9 @@ import math
 import os
 import time
 
-COUNTS_PER_GF = 182.96
+# Q2 value - measured on one Q2 across 15 points, 8.5 gf to 2063 gf. The
+# X-Max 4 cell measured 182.96.
+COUNTS_PER_GF = 201.0
 
 # A torn read is orders of magnitude out of band (-33, -9, -8113281 observed
 # against a -388751 baseline). 50000 counts is 273 gf; between two samples 3 ms
@@ -301,9 +303,9 @@ class QidiCSValidate:
             dev = abs(reg['slope'] - 1.0) * 100.0
             if dev < 0.5:
                 verdict.append(
-                    "SAME SCALE to %.2f%% over %.0f gf - 182.96 counts/gf and "
+                    "SAME SCALE to %.2f%% over %.0f gf - %.0f counts/gf and "
                     "every threshold derived from it transfer to the raw path "
-                    "unchanged." % (dev, spread_gf))
+                    "unchanged." % (dev, spread_gf, COUNTS_PER_GF))
             else:
                 verdict.append(
                     "SCALES DIFFER by %.2f%%. The raw path needs its own "

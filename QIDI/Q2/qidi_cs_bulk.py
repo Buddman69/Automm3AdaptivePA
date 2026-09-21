@@ -60,7 +60,10 @@ import logging
 import os
 import time
 
-COUNTS_PER_GF = 182.96
+# Q2 value - measured on one Q2 across 15 points, 8.5 gf to 2063 gf. The
+# X-Max 4 cell measured 182.96; this is display-only in this diagnostic tool,
+# but a mismatched value here would still print a wrong gf figure.
+COUNTS_PER_GF = 201.0
 BYTES_PER_SAMPLE = 4
 SAMPLE_PERIOD_MS = 1000.0 / 1280.0      # 0.78125 ms per conversion
 

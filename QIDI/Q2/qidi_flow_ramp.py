@@ -3,6 +3,19 @@
 # Copyright (C) 2026  Budd
 # Licensed under PolyForm Strict 1.0.0 - see LICENSE.md.
 #
+# QIDI Q2 BUILD. Copied from the X-Max 4 sources and altered for this
+# machine - the two are kept entirely separate, and nothing here feeds
+# back. Q2 values verified against QIDI's own firmware, both the
+# 2026-01 GitHub release and the current 01.01.02.04 (2026-08-05):
+#   identical to the X-Max 4 : probe_air on THR:PB3/PB4, c_sensor,
+#                              voltage 4.95, delta_v 0.08,
+#                              rotation_distance 53.7, 1517:170,
+#                              every extrusion guard disabled
+#   DIFFERENT                : nozzle 0.4, bed 275x295x265,
+#                              park X85 Y287.5, wiper X95-115,
+#                              NO [gcode_macro _km_globals],
+#                              load cell 201 counts/gf (Max4: 182.96)
+#
 #
 # SAFETY - read SAFETY.md rule 2 before touching this
 #   This is the first thing in the project that heats and extrudes.
@@ -37,7 +50,14 @@ A_FIL = math.pi * (1.75 / 2.0) ** 2          # 2.40528 mm^2
 
 # Measured against a kitchen scale under the nozzle; see README.md,
 # "Calibrating counts per gram". It is NOT a constant of the design.
-COUNTS_PER_GF = 182.96
+# Measured on one Q2 over 15 points, 8.5 gf to 2063 gf. The X-Max 4 cell
+# measured 182.96 - an 11% difference between two machines of the same
+# family, which is why this can never be a shared constant.
+#
+# 201 rather than the 205 a full-range fit gives, deliberately: the slope
+# drifts from ~208 mid-range to ~200 at the top, and the abort lives at the
+# top. Low makes the abort fire EARLY, which is the safe direction.
+COUNTS_PER_GF = 201.0
 # The cell's rating is 2000 gf (unverified, from the Q2 config). Calibration
 # took it to 2175 gf with no hysteresis and perfect linearity, so this is well
 # inside proven territory FOR THE CELL. The real risk at this force is the
@@ -91,8 +111,11 @@ DEFAULT_SOAK_MAX_S = 300.0
 # Nozzle wipe travel, as offsets from park_x. QIDI's CLEAR_NOZZLE_PLR uses
 # +8 to +27; that turned out not to sweep far enough to clean properly, so this
 # is wider and adjustable per run via LO= / HI=.
-WIPE_LO_OFFSET = 0.0
-WIPE_HI_OFFSET = 45.0
+# QIDI's own CLEAR_NOZZLE_PLR oscillates between X95 and X115, i.e.
+# park_x + 10 to park_x + 30. The X-Max 4 build uses 0..45 from a park of
+# 135; the same span here would reach X130 on a 275 mm bed.
+WIPE_LO_OFFSET = 10.0
+WIPE_HI_OFFSET = 30.0
 # 6, raised from 5 on 2026-09-21 to match qidi_pa_measure.py. The two stages had
 # drifted apart (5 here, 6 there) for no reason anyone could reconstruct, which
 # made "how many wipes does it do?" unanswerable without reading both files.
@@ -496,7 +519,7 @@ class QidiFlowRamp:
             if filt:
                 self._filter(gcmd, True)
             gcmd.respond_info("flow_ramp: moving to the purge chute")
-            self.gcode.run_script_from_command("OPTIMIZED_MOVE_TO_TRASH")
+            self.gcode.run_script_from_command("MOVE_TO_TRASH")
             toolhead.wait_moves()
 
             self._wait_temp_stable(gcmd, temp, tol=1.0, window=5.0, timeout=420.)
@@ -628,15 +651,14 @@ class QidiFlowRamp:
                               "filtration %s" % ("on" if on else "off",))
 
     def _park_x(self):
-        px = 135.0
-        km = self.printer.lookup_object('gcode_macro _km_globals', None)
-        if km is not None:
-            try:
-                px = float(km.get_status(self.reactor.monotonic())
-                           .get('park_x', px))
-            except Exception:
-                pass
-        return px
+        """The Q2 parks at X85 - QIDI's MOVE_TO_TRASH goes to X85 Y287.5.
+
+        Fixed, not looked up: the Q2 has NO [gcode_macro _km_globals], so there
+        is nothing to read it from. The X-Max 4 build reads 135 from that macro;
+        135 here would be most of the way across a 275 mm bed, dragging a hot,
+        extruding nozzle over the build surface.
+        """
+        return 85.0
 
     def _wipe(self, gcmd, toolhead, lo, hi, passes, short_passes=None):
         # The silicone wiper beside the chute. Defaults match the X oscillation
@@ -688,7 +710,7 @@ class QidiFlowRamp:
                              maxval=20)
         move = gcmd.get_int('MOVE', 1, minval=0, maxval=1)
         if move:
-            self.gcode.run_script_from_command("OPTIMIZED_MOVE_TO_TRASH")
+            self.gcode.run_script_from_command("MOVE_TO_TRASH")
             toolhead.wait_moves()
         self._wipe(gcmd, toolhead, lo, hi, passes, short)
 
@@ -1048,7 +1070,7 @@ class QidiFlowRamp:
             if filt:
                 self._filter(gcmd, True)
             gcmd.respond_info("flow_ramp: moving to the purge chute")
-            self.gcode.run_script_from_command("OPTIMIZED_MOVE_TO_TRASH")
+            self.gcode.run_script_from_command("MOVE_TO_TRASH")
             toolhead.wait_moves()
             self._wait_temp_stable(gcmd, temp, tol=1.0, window=5.0, timeout=420.)
             tare = _mean(self._sample(read, 60, 1.0 / hz, gcmd))

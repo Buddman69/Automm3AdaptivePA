@@ -38,9 +38,11 @@ are numbered here.
    **Three protections that do not exist**, all measured 2026-09-14:
 
    - **No firmware extrusion guard** — the limits above are disabled.
-   - **No ADC ceiling.** At 182.96 counts/gf the ADC's ±2²³ range is ±45,850 gf,
-     23× the cell's 2000 gf rating. It cannot saturate before the cell breaks,
-     so there is no clipping or rail to detect.
+   - **No ADC ceiling.** At this Q2's 201 counts/gf the ADC's ±2²³ range is
+     ±41,734 gf, ~21× the cell's 2000 gf rating (calibration on this cell
+     reached 2063 gf with no hysteresis or knee, so 2000 gf is a safe floor,
+     not an optimistic one). It cannot saturate before the cell breaks, so
+     there is no clipping or rail to detect.
    - **No mechanical limit on Z.** Two Z motors at 1.07 A on a 2 mm lead make
      51,000–128,000 gf — 25–65× the cell's rating — reachable in microns at
      0.078 µm/microstep. Any bed-contact routine must go through the probe's own

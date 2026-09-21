@@ -118,8 +118,8 @@ def main():
     ok = True
 
     print("\n== the torn-read gate ==")
-    ok &= check("gate is 50000 counts = 273 gf",
-                abs(V.TORN_GATE_COUNTS / V.COUNTS_PER_GF - 273.3) < 1.0,
+    ok &= check("gate is 50000 counts = 248.8 gf",
+                abs(V.TORN_GATE_COUNTS / V.COUNTS_PER_GF - 248.8) < 1.0,
                 "%.1f gf" % (V.TORN_GATE_COUNTS / V.COUNTS_PER_GF))
     ok &= check("which is ~91000 gf/s across a 3 ms gap - no hand reaches it",
                 V.TORN_GATE_COUNTS / V.COUNTS_PER_GF / 0.003 > 50000)

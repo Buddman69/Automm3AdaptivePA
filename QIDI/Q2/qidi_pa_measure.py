@@ -3,6 +3,19 @@
 # Copyright (C) 2026  Budd
 # Licensed under PolyForm Strict 1.0.0 - see LICENSE.md.
 #
+# QIDI Q2 BUILD. Copied from the X-Max 4 sources and altered for this
+# machine - the two are kept entirely separate, and nothing here feeds
+# back. Q2 values verified against QIDI's own firmware, both the
+# 2026-01 GitHub release and the current 01.01.02.04 (2026-08-05):
+#   identical to the X-Max 4 : probe_air on THR:PB3/PB4, c_sensor,
+#                              voltage 4.95, delta_v 0.08,
+#                              rotation_distance 53.7, 1517:170,
+#                              every extrusion guard disabled
+#   DIFFERENT                : nozzle 0.4, bed 275x295x265,
+#                              park X85 Y287.5, wiper X95-115,
+#                              NO [gcode_macro _km_globals],
+#                              load cell 201 counts/gf (Max4: 182.96)
+#
 # This implements the CORRECTED design - read the next
 # section before changing anything.
 #
@@ -92,7 +105,9 @@ import math
 import os
 import time
 
-COUNTS_PER_GF = 182.96
+# See qidi_flow_ramp.py. Must match it - the two stages abort
+# independently.
+COUNTS_PER_GF = 201.0
 ABORT_GF = 1650.0
 VARIANCE_ABORT_GF = 35.0
 
@@ -122,8 +137,8 @@ DEFAULT_PRIME_MM3 = 100.0
 # above it one does and everything measured afterwards is corrupted.
 WIPE_VOLUME_MM3 = 200.0
 REPRIME_MM3 = 50.0      # re-pressurise the melt after an inter-block wipe
-WIPE_LO_OFFSET = 0.0
-WIPE_HI_OFFSET = 45.0
+WIPE_LO_OFFSET = 10.0
+WIPE_HI_OFFSET = 30.0
 # 6 passes, raised from 5 on 2026-09-15 after waste was left on the nozzle.
 # Costs ~0.5 s per wipe at the proven feedrate - cheap insurance against the
 # failure mode that corrupts everything measured after it.
@@ -445,15 +460,10 @@ class QidiPAMeasure:
         # The wiper sits beside the purge chute, so its X is relative to the
         # park position - NOT absolute. An earlier version of this module wiped
         # at absolute X 0-45, which is somewhere over the bed.
-        px = 135.0
-        km = self.printer.lookup_object('gcode_macro _km_globals', None)
-        if km is not None:
-            try:
-                px = float(km.get_status(self.reactor.monotonic())
-                           .get('park_x', px))
-            except Exception:
-                pass
-        return px
+        # Fixed at the Q2's park - it has no [gcode_macro _km_globals] to read
+        # from, and the X-Max 4's 135 would be mid-bed here. See
+        # qidi_flow_ramp._park_x.
+        return 85.0
 
     def _wipe(self, toolhead=None):
         # Long strokes over the full travel, then shorter ones working the near
@@ -697,9 +707,14 @@ class QidiPAMeasure:
             self._script("M106 P%d S%d" % (FILTER_M106_P, FILTER_SPEED))
             started = True
             gcmd.respond_info("pa: moving to the purge chute")
-            self._script("OPTIMIZED_MOVE_TO_TRASH")
+            self._script("MOVE_TO_TRASH")
             toolhead.wait_moves()
-            limits = self._motion_limits(toolhead)
+            # NOT re-captured here. The limits from before the move are the ones
+            # to restore: QIDI's MOVE_TO_TRASH does its own M204 and never puts
+            # it back, so re-reading now would capture the macro's value. On the
+            # Q2 that macro sets 5000 against a configured max_accel of 20000 -
+            # the run would hand the printer back at a quarter of its
+            # acceleration. (On an X-Max 4 it is invisible: 10000 either way.)
             for p in pts:
                 results.append(self._measure_point(
                     gcmd, p, leg_s, cycles, blocks, read, raw, oid, mcu,

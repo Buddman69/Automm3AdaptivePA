@@ -129,8 +129,6 @@ class QidiCalWizard:
         self.printer = config.get_printer()
         self.reactor = self.printer.get_reactor()
         self.gcode = self.printer.lookup_object('gcode')
-        # 0.4, not the Max4's 0.6: the Q2 ships a 0.4mm nozzle. Still
-        # overridable via [qidi_cal_wizard] nozzle_diameter in printer.cfg.
         self.def_nozzle = config.getfloat('nozzle_diameter', 0.4, above=0.)
         self.def_temp = config.getfloat('default_temp', DEFAULT_TEMP,
                                         minval=TEMP_MIN, maxval=TEMP_MAX)

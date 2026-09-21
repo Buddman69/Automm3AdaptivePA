@@ -3,6 +3,19 @@
 # Copyright (C) 2026  Budd
 # Licensed under PolyForm Strict 1.0.0 - see LICENSE.md.
 #
+# QIDI Q2 BUILD. Copied from the X-Max 4 sources and altered for this
+# machine - the two are kept entirely separate, and nothing here feeds
+# back. Q2 values verified against QIDI's own firmware, both the
+# 2026-01 GitHub release and the current 01.01.02.04 (2026-08-05):
+#   identical to the X-Max 4 : probe_air on THR:PB3/PB4, c_sensor,
+#                              voltage 4.95, delta_v 0.08,
+#                              rotation_distance 53.7, 1517:170,
+#                              every extrusion guard disabled
+#   DIFFERENT                : nozzle 0.4, bed 275x295x265,
+#                              park X85 Y287.5, wiper X95-115,
+#                              NO [gcode_macro _km_globals],
+#                              load cell 201 counts/gf (Max4: 182.96)
+#
 # WHAT ORCA EXPECTS - read off a real profile, not guessed
 #   The filament setting is `adaptive_pressure_advance_model`: one string,
 #   newline-separated rows, each "PA,flow,accel". From the stock

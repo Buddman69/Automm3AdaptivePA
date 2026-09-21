@@ -195,10 +195,11 @@ cat <<'DONE'
       (needs --diagnostics; skip if you did not install those)
 
    2. Measure counts-per-gram-force for THIS machine.
-      The shipped default (182.96) belongs to one specific cell
-      and mount. Every abort threshold depends on it, and it is
-      the ONLY overload protection the printer has.
-      See README.md, "Calibrating counts per gram".
+      The shipped default (201, measured on one Q2) belongs to
+      one specific cell and mount. Every abort threshold depends
+      on it, and it is the ONLY overload protection the printer
+      has. See README.md, "The one number you must measure
+      yourself".
 
    3. QIDI_CALIBRATE
       Type this into the printer's web console - either in a

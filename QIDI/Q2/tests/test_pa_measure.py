@@ -172,19 +172,21 @@ def main():
                 or PA.fit_tau(ts, [-f for f in fs])['tau'] > 0)
 
     print("\n== the force abort scales with THIS machine's cell ==")
-    # Hardcoded to the module constant until 2026-09-17. The abort is the only
-    # overload protection the printer has - QIDI disables every Klipper
-    # extrusion guard - so a cell not reading 182.96 counts/gf got its ceiling
-    # at the wrong FORCE while the console printed the right number. At 120
-    # counts/gf that was 2516 gf on a cell rated for 2000.
+    # The abort is the only overload protection the printer has - QIDI disables
+    # every Klipper extrusion guard - so a cell not reading the configured
+    # counts_per_gf gets its ceiling at the wrong FORCE while the console
+    # prints the right number. This Q2 was measured at 201 counts/gf across 15
+    # points, 8.5 gf to 2063 gf - see qidi_flow_ramp.py for the fit. The
+    # X-Max 4 cell measured 182.96, an 11% difference between two machines of
+    # the same family, which is why this can never be a shared constant.
     _, m_def = build(tempfile.mkdtemp())
-    ok &= check("defaults to the measured 182.96",
-                abs(m_def.counts_per_gf - 182.96) < 1e-9,
+    ok &= check("defaults to the measured 201",
+                abs(m_def.counts_per_gf - 201.0) < 1e-9,
                 str(m_def.counts_per_gf))
     _, m_lo = build(tempfile.mkdtemp(), counts_per_gf=120.0)
     ok &= check("a configured scale is honoured",
                 abs(m_lo.counts_per_gf - 120.0) < 1e-9, str(m_lo.counts_per_gf))
-    for mod_, scale in ((m_def, 182.96), (m_lo, 120.0)):
+    for mod_, scale in ((m_def, 201.0), (m_lo, 120.0)):
         gf = (PA.ABORT_GF * mod_.counts_per_gf) / scale
         ok &= check("at %.2f counts/gf the ceiling is still %.0f gf"
                     % (scale, PA.ABORT_GF), abs(gf - PA.ABORT_GF) < 1e-6,
@@ -350,12 +352,12 @@ def main():
         pass
     joined = "\n".join(g.scripts)
     ok &= check("moves to the purge chute before extruding",
-                'OPTIMIZED_MOVE_TO_TRASH' in joined
-                and joined.index('OPTIMIZED_MOVE_TO_TRASH')
+                'MOVE_TO_TRASH' in joined
+                and joined.index('MOVE_TO_TRASH')
                 < (joined.index('G1 E') if 'G1 E' in joined else 1 << 30),
                 joined[:300])
     ok &= check("wipes relative to park_x, not at absolute X 0",
-                'G1 X180.00' in joined and 'G1 X135.00' in joined,
+                'G1 X115.00' in joined and 'G1 X85.00' in joined,
                 str([l for l in joined.split("\n") if l.startswith('G1 X')][:6]))
     ok &= check("turns filtration on and off again",
                 'M106 P3 S254' in joined and 'M106 P3 S0' in joined,
@@ -521,9 +523,16 @@ def main():
                 first.count('G1 X') == want, str(first.count('G1 X')))
     # The short strokes must actually be shorter: every X in the wipe should sit
     # at or below the far end, and the short ones strictly inside it.
+    #
+    # On the X-Max 4 build, WIPE_LO_OFFSET is 0.0, so the wipe's low point and
+    # the final park-return point are the SAME X - only 3 distinct stops. On
+    # this Q2 build, WIPE_LO_OFFSET is 10.0 (matching QIDI's own
+    # CLEAR_NOZZLE_PLR, which does not wipe all the way back to park), so park
+    # and lo are two different points - 4 distinct stops: park < lo < short_hi
+    # < hi.
     xs = sorted({float(t.split()[0]) for t in first.split('G1 X')[1:]})
-    ok &= check("the short strokes stop short of the long ones",
-                len(xs) == 3 and xs[1] < xs[2], str(xs))
+    ok &= check("park, lo, short_hi and hi are four distinct, ordered stops",
+                len(xs) == 4 and xs[0] < xs[1] < xs[2] < xs[3], str(xs))
     g, mod = hot(tempfile.mkdtemp())
     try:
         g.run('QIDI_PA_MEASURE', POINT='centre', BLOCKS=1, CYCLES=2)
