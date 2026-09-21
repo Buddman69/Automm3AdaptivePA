@@ -70,12 +70,12 @@ for a in "$@"; do
   esac
 done
 
-# The six modules QIDI_CALIBRATE needs. Section name == module name, so there is
-# no versioned-copy confusion to inherit.
+# The seven modules QIDI_CALIBRATE and QIDI_UPDATE need. Section name ==
+# module name, so there is no versioned-copy confusion to inherit.
 CORE=(qidi_flow_ramp.py qidi_pa_envelope.py qidi_pa_measure.py
-      qidi_pa_table.py qidi_auto_cal.py qidi_cal_wizard.py)
+      qidi_pa_table.py qidi_auto_cal.py qidi_cal_wizard.py qidi_update.py)
 CORE_SECTIONS=(qidi_flow_ramp qidi_pa_envelope qidi_pa_measure
-               qidi_pa_table qidi_auto_cal qidi_cal_wizard)
+               qidi_pa_table qidi_auto_cal qidi_cal_wizard qidi_update)
 
 # Read-only probes. Not needed to calibrate; useful for bringing up a new
 # machine or diagnosing a sensor. QIDI_CS_READ is in the README's first-run
@@ -146,6 +146,7 @@ echo
   printf 'KNOWN=%q\n'         "${KNOWN[*]}"
   printf 'SECTIONS=%q\n'      "${SECTIONS[*]}"
   printf 'STAMP=%q\n'         "$(date +%Y%m%d-%H%M%S)"
+
 
   # The modules themselves, as a base64 tar. Skipped on a dry run - there is
   # nothing to extract, and it keeps the dry run instant.

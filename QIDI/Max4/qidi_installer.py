@@ -42,10 +42,15 @@ DEFAULT_PASS = "qiditech"
 SSH_PORT = 22
 MOONRAKER_PORT = 7125
 
+# qidi_update.py is the BOOTSTRAP: you cannot run a console command to install
+# the thing that gives you console commands, so this installer puts it there.
+# After that QIDI_UPDATE maintains everything, including itself.
 CORE = ["qidi_flow_ramp.py", "qidi_pa_envelope.py", "qidi_pa_measure.py",
-        "qidi_pa_table.py", "qidi_auto_cal.py", "qidi_cal_wizard.py"]
+        "qidi_pa_table.py", "qidi_auto_cal.py", "qidi_cal_wizard.py",
+        "qidi_update.py"]
 CORE_SECTIONS = ["qidi_flow_ramp", "qidi_pa_envelope", "qidi_pa_measure",
-                 "qidi_pa_table", "qidi_auto_cal", "qidi_cal_wizard"]
+                 "qidi_pa_table", "qidi_auto_cal", "qidi_cal_wizard",
+                 "qidi_update"]
 
 DIAG = ["qidi_cs_locate.py", "qidi_cs_read.py", "qidi_cs_proto.py",
         "qidi_cs_timing.py", "qidi_cs_clock.py", "qidi_cs_validate.py",

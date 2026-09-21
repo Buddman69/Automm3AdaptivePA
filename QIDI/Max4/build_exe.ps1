@@ -31,6 +31,7 @@ $Name = "QIDI-Calibration-Installer"
 $Modules = @(
     "qidi_flow_ramp.py", "qidi_pa_envelope.py", "qidi_pa_measure.py",
     "qidi_pa_table.py", "qidi_auto_cal.py", "qidi_cal_wizard.py",
+    "qidi_update.py",
     "qidi_cs_locate.py", "qidi_cs_read.py", "qidi_cs_proto.py",
     "qidi_cs_timing.py", "qidi_cs_clock.py", "qidi_cs_validate.py",
     "qidi_cs_bulk.py", "qidi_cs_batch.py",

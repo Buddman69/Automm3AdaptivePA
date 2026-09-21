@@ -128,6 +128,19 @@ WIPE_HI_OFFSET = 45.0
 # Costs ~0.5 s per wipe at the proven feedrate - cheap insurance against the
 # failure mode that corrupts everything measured after it.
 WIPE_PASSES = 6
+
+# Then four SHORTER strokes, added 2026-09-21 because the chute was not clearing
+# on some runs. The long passes carry material out along the full travel; these
+# work the near end, where what the long strokes drag back was being left.
+# The short travel is a fraction of the full stroke rather than a second fixed
+# offset, so it stays proportional if the travel is ever retuned.
+#
+# These values are duplicated in qidi_flow_ramp.py, which has its own copy of
+# the wipe. Change both or the two stages wipe differently. They were 5 there
+# and 6 here until 2026-09-21, for no reason anyone could reconstruct; both are
+# 6 now, so the two stages wipe identically.
+WIPE_SHORT_PASSES = 4
+WIPE_SHORT_FRAC = 0.7
 # Doubled to 20000/12000 on 2026-09-15 and REVERTED the same day: at 333 mm/s
 # the wiper left waste on the nozzle. The whole saving was ~1.4 s per wipe,
 # about 14 s across a five-point run, against a cleaning failure that corrupts
@@ -443,11 +456,19 @@ class QidiPAMeasure:
         return px
 
     def _wipe(self, toolhead=None):
+        # Long strokes over the full travel, then shorter ones working the near
+        # end - see WIPE_SHORT_PASSES. Kept deliberately identical in shape to
+        # qidi_flow_ramp._wipe; the two are separate copies, so a change to the
+        # wipe has to be made in BOTH.
         px = self._park_x()
         lo, hi = px + WIPE_LO_OFFSET, px + WIPE_HI_OFFSET
+        short_hi = lo + WIPE_SHORT_FRAC * (hi - lo)
         lines = ["SAVE_GCODE_STATE NAME=_qidi_pa_wipe", "G90"]
         for _ in range(WIPE_PASSES):
             lines.append("G1 X%.2f F%d" % (hi, WIPE_FEED_FAST))
+            lines.append("G1 X%.2f F%d" % (lo, WIPE_FEED_SLOW))
+        for _ in range(WIPE_SHORT_PASSES):
+            lines.append("G1 X%.2f F%d" % (short_hi, WIPE_FEED_FAST))
             lines.append("G1 X%.2f F%d" % (lo, WIPE_FEED_SLOW))
         lines.append("G1 X%.2f F%d" % (px, WIPE_FEED_SLOW))
         lines.append("RESTORE_GCODE_STATE NAME=_qidi_pa_wipe")

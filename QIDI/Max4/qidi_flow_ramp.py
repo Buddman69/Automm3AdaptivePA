@@ -93,7 +93,27 @@ DEFAULT_SOAK_MAX_S = 300.0
 # is wider and adjustable per run via LO= / HI=.
 WIPE_LO_OFFSET = 0.0
 WIPE_HI_OFFSET = 45.0
-WIPE_PASSES = 5
+# 6, raised from 5 on 2026-09-21 to match qidi_pa_measure.py. The two stages had
+# drifted apart (5 here, 6 there) for no reason anyone could reconstruct, which
+# made "how many wipes does it do?" unanswerable without reading both files.
+WIPE_PASSES = 6
+
+# Then four SHORTER strokes, added 2026-09-21 because the chute was not clearing
+# on some runs. The long passes carry material out along the full travel; these
+# work the near end, where what the long strokes drag back was being left.
+#
+# The short travel is a FRACTION of whatever stroke is actually in use, not a
+# second fixed offset - so LO= / HI= overrides still scale it correctly instead
+# of silently producing a "short" pass longer than the long one.
+WIPE_SHORT_PASSES = 4
+WIPE_SHORT_FRAC = 0.7
+
+# Feedrates. NOT to be raised: doubled to 20000/12000 on 2026-09-15 and reverted
+# the same day, because at 333 mm/s the wiper left waste on the nozzle, and
+# anything measured after a bad wipe is corrupted. More passes are cheap; faster
+# passes are not.
+WIPE_FEED_FAST = 10000
+WIPE_FEED_SLOW = 6000
 
 # Slip detection, now armed by default. Baselines from the first two full ramps:
 # settled steps ran 5-13 gf of within-step sd, 22 gf at 19.87 mm3/s and 63 gf at
@@ -618,29 +638,40 @@ class QidiFlowRamp:
                 pass
         return px
 
-    def _wipe(self, gcmd, toolhead, lo, hi, passes):
+    def _wipe(self, gcmd, toolhead, lo, hi, passes, short_passes=None):
         # The silicone wiper beside the chute. Defaults match the X oscillation
         # QIDI's own CLEAR_NOZZLE_PLR uses (park_x + 8 to park_x + 27), but the
         # travel is adjustable - that default does not sweep far enough to
         # clean the nozzle properly.
+        #
+        # Two phases: the long strokes sweep the full travel, then a few shorter
+        # ones work the near end. See WIPE_SHORT_PASSES.
         px = self._park_x()
         lo = px + WIPE_LO_OFFSET if lo is None else lo
         hi = px + WIPE_HI_OFFSET if hi is None else hi
         if hi < lo:
             lo, hi = hi, lo
+        if short_passes is None:
+            short_passes = WIPE_SHORT_PASSES
+        short_hi = lo + WIPE_SHORT_FRAC * (hi - lo)
         lines = ["G90"]
         for _ in range(int(passes)):
-            lines.append("G1 X%.2f F10000" % (hi,))
-            lines.append("G1 X%.2f F6000" % (lo,))
-        lines.append("G1 X%.2f F6000" % (px,))
+            lines.append("G1 X%.2f F%d" % (hi, WIPE_FEED_FAST))
+            lines.append("G1 X%.2f F%d" % (lo, WIPE_FEED_SLOW))
+        for _ in range(int(short_passes)):
+            lines.append("G1 X%.2f F%d" % (short_hi, WIPE_FEED_FAST))
+            lines.append("G1 X%.2f F%d" % (lo, WIPE_FEED_SLOW))
+        lines.append("G1 X%.2f F%d" % (px, WIPE_FEED_SLOW))
         self.gcode.run_script_from_command("\n".join(lines))
         toolhead.wait_moves()
-        gcmd.respond_info("flow_ramp: wiped X%.1f-%.1f x%d, parked at X%.1f"
-                          % (lo, hi, passes, px))
+        gcmd.respond_info("flow_ramp: wiped X%.1f-%.1f x%d then X%.1f-%.1f x%d,"
+                          " parked at X%.1f"
+                          % (lo, hi, passes, lo, short_hi, short_passes, px))
 
     cmd_WIPE_help = ("Wipe the nozzle on the silicone wiper. Standalone, so the "
-                     "travel can be tuned without running a ramp. "
-                     "[LO=<x>] [HI=<x>] [PASSES=4]")
+                     "travel can be tuned without running a ramp. Long strokes "
+                     "then shorter ones at the near end. "
+                     "[LO=<x>] [HI=<x>] [PASSES=5] [SHORT_PASSES=4]")
 
     def cmd_WIPE(self, gcmd):
         return self._guard(gcmd, self._run_WIPE)
@@ -653,11 +684,13 @@ class QidiFlowRamp:
         lo = gcmd.get_float('LO', None)
         hi = gcmd.get_float('HI', None)
         passes = gcmd.get_int('PASSES', WIPE_PASSES, minval=1, maxval=20)
+        short = gcmd.get_int('SHORT_PASSES', WIPE_SHORT_PASSES, minval=0,
+                             maxval=20)
         move = gcmd.get_int('MOVE', 1, minval=0, maxval=1)
         if move:
             self.gcode.run_script_from_command("OPTIMIZED_MOVE_TO_TRASH")
             toolhead.wait_moves()
-        self._wipe(gcmd, toolhead, lo, hi, passes)
+        self._wipe(gcmd, toolhead, lo, hi, passes, short)
 
     def _finish(self, gcmd, toolhead, retract, wipe, cooldown,
                 wipe_lo=None, wipe_hi=None, wipe_passes=None, filt=0):
