@@ -166,10 +166,22 @@ class QidiUpdate:
 
     # -- github -----------------------------------------------------------
     def _get(self, url, binary=False):
-        req = Request(url, headers={
-            'User-Agent': 'qidi-update',
-            'Accept': ('application/vnd.github+json' if not binary
-                       else 'application/octet-stream')})
+        # ALWAYS the GitHub JSON Accept header, binary request or not.
+        #
+        # This looks backwards - 'binary=True' asks for bytes, so
+        # 'application/octet-stream' looks like the right Accept - and that IS
+        # correct for downloading a release ASSET. It is wrong here, because
+        # the zipball URL is not an asset download: it is an ordinary
+        # api.github.com endpoint that content-negotiates on Accept like every
+        # other GitHub API call, then 302-redirects to codeload.github.com for
+        # the actual bytes. Sending octet-stream to api.github.com itself gets
+        # "415 Unsupported Media Type" before the redirect ever happens -
+        # found by testing this against the real API, since the test suite
+        # mocks _get() and could not have caught it. codeload.github.com does
+        # not content-negotiate at all, so the JSON header rides along
+        # harmlessly once redirected.
+        req = Request(url, headers={'User-Agent': 'qidi-update',
+                                    'Accept': 'application/vnd.github+json'})
         resp = urlopen(req, timeout=HTTP_TIMEOUT)
         try:
             if binary:
