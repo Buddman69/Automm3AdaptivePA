@@ -5,8 +5,11 @@
 #
 #   .\build_exe.ps1
 #
-# Produces dist\QIDI-Calibration-Installer.exe - one file, no Python needed on
-# the machine that runs it.
+# Produces dist\QIDI-Max4-Calibration-Installer.exe - one file, no Python
+# needed on the machine that runs it. Named with the model in it because the
+# Q2 build (a separate codebase, QIDI/Q2/) produces its own installer too -
+# without a model in the filename, two unrelated printers' installers would
+# be indistinguishable sitting in the same Downloads folder.
 #
 # WHY THE MODULES ARE BUNDLED IN
 #   --add-data puts every klippy extra and printer_setup.sh INSIDE the exe.
@@ -26,7 +29,7 @@
 $ErrorActionPreference = "Stop"
 Set-Location -Path $PSScriptRoot
 
-$Name = "QIDI-Calibration-Installer"
+$Name = "QIDI-Max4-Calibration-Installer"
 
 $Modules = @(
     "qidi_flow_ramp.py", "qidi_pa_envelope.py", "qidi_pa_measure.py",
