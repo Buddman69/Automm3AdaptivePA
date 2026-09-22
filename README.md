@@ -27,6 +27,12 @@ another:
 Open the model's own `README.md` for install instructions — everything from
 here down (updates, licence, support links) is common ground, not shared code.
 
+## Releases
+
+Every build, for every model, is published on the
+[Releases page](https://github.com/Buddman69/Automm3AdaptivePA/releases) —
+installers, release notes, and version history all in one place.
+
 ## Updating
 
 Once installed, `QIDI_UPDATE` in the printer's own web console fetches new
