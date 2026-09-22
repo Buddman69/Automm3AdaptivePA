@@ -496,6 +496,24 @@ def main():
     ok &= check("and puts the cruise ratio back too",
                 any('MINIMUM_CRUISE_RATIO=0.500' in l for l in lim), str(lim))
 
+    print("\n== the limits are captured once, before the trash move ==")
+    # A structural check, not a behavioural one - the mock toolhead's
+    # max_accel does not change as a side effect of a script call, so a test
+    # run through it cannot catch a re-capture picking up a stale value.
+    # MOVE_TO_TRASH sets its own M204 and never restores it, so capturing
+    # AGAIN after that move would silently pick up the macro's acceleration
+    # instead of the machine's real configured one - this was a live bug,
+    # invisible on a machine where the two numbers happen to match.
+    src = open(PA.__file__, encoding='utf-8').read()
+    ok &= check("exactly one capture of _motion_limits(toolhead) in the file",
+                src.count('self._motion_limits(toolhead)') == 1,
+                "%d occurrences" % src.count('self._motion_limits(toolhead)'))
+    i_capture = src.find('self._motion_limits(toolhead)')
+    i_trash = src.find('"MOVE_TO_TRASH"')
+    ok &= check("and it happens before the move to the chute",
+                -1 < i_capture < i_trash, "capture=%d trash=%d"
+                % (i_capture, i_trash))
+
     print("\n== wipe speed ==")
     # Doubling these left waste on the nozzle on a real run. The saving was
     # ~14 s across a five-point run, so the proven speed wins.

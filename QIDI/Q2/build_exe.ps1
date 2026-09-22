@@ -5,8 +5,11 @@
 #
 #   .\build_exe.ps1
 #
-# Produces dist\QIDI-Q2-Calibration-Installer.exe - one file, no Python needed
-# on the machine that runs it.
+# Produces dist\QIDI-Q2-Calibration-Installer.exe - one file, no Python
+# needed on the machine that runs it. Named with the model in it because the
+# Max4 build (a separate codebase, QIDI/Max4/) produces its own installer too
+# - without a model in the filename, two unrelated printers' installers would
+# be indistinguishable sitting in the same Downloads folder.
 #
 # THIS FOLDER IS A SEPARATE PROJECT FROM THE X-MAX 4 BUILD. It was copied from
 # the X-Max 4 sources and altered for the Q2 (see the "QIDI Q2 BUILD" banner in
@@ -36,6 +39,11 @@ $Modules = @(
     "qidi_flow_ramp.py", "qidi_pa_envelope.py", "qidi_pa_measure.py",
     "qidi_pa_table.py", "qidi_auto_cal.py", "qidi_cal_wizard.py",
     "qidi_update.py",
+    # The bed routine (QIDI_AUTO_CALIBRATE_BED) - separate files from the
+    # chute versions above, so nothing about them can change what the chute
+    # routine does. See CHANGELOG/.
+    "qidi_flow_bed_search.py", "qidi_pa_bed_measure.py",
+    "qidi_auto_cal_bed.py",
     "qidi_cs_locate.py", "qidi_cs_read.py", "qidi_cs_proto.py",
     "qidi_cs_timing.py", "qidi_cs_clock.py", "qidi_cs_validate.py",
     "qidi_cs_bulk.py", "qidi_cs_batch.py",
@@ -86,9 +94,6 @@ Write-Host ""
 Write-Host "built $exe  ($size MB)" -ForegroundColor Green
 Write-Host "Give people this one file - everything is inside it."
 Write-Host ""
-Write-Host "A COPY OF THIS FILE IS ALSO TRACKED IN GIT, at the repo root of" -ForegroundColor Yellow
-Write-Host "this folder (QIDI-Q2-Calibration-Installer.exe) - this build" -ForegroundColor Yellow
-Write-Host "only wrote dist\, it did NOT update that tracked copy or the" -ForegroundColor Yellow
-Write-Host "GitHub Release asset. After a real change, copy dist\$Name.exe" -ForegroundColor Yellow
-Write-Host "over it, commit, and re-upload to the release, or the three" -ForegroundColor Yellow
-Write-Host "will quietly drift out of sync." -ForegroundColor Yellow
+Write-Host "This is NOT tracked in git - upload it to the GitHub Release" -ForegroundColor Yellow
+Write-Host "manually (gh release upload <tag> $exe), or it exists only" -ForegroundColor Yellow
+Write-Host "on this machine." -ForegroundColor Yellow

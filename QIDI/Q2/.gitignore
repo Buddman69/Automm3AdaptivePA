@@ -4,16 +4,13 @@ dist/
 build/
 *.spec
 
-# The installer itself: ignored by extension, then the one shipped copy is
-# named back in below. It is ALSO attached to each GitHub Release as a
-# download asset - so it exists in two places on purpose, at Budd's request:
-# every push after this one adds another full ~15 MB copy to git history,
-# with no way to remove it later short of rewriting history, and the Release
-# asset already covers the same download without that cost. Kept anyway
-# because it means the exe is visible directly in the repo's file list, not
-# only on the Releases page. (Same pattern as QIDI/Max4/ - see its .gitignore.)
+# The installer .exe is a ~15 MB binary rebuilt on every change. It briefly
+# lived tracked in this repo too (2026-09-21) and was moved back to
+# Releases-only on 2026-09-22 - every commit while it was tracked added
+# another full copy to git history with no way to remove it later short of
+# rewriting history, for no benefit the Releases page did not already give.
+# (Same pattern as QIDI/Max4/ - see its .gitignore.)
 *.exe
-!QIDI-Q2-Calibration-Installer.exe
 
 # Release bundles - assembled from the repo, not tracked in it.
 *.zip

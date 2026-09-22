@@ -53,11 +53,17 @@ build surface.
 
 ## Install
 
-Download **[`QIDI-Q2-Calibration-Installer.exe`](QIDI-Q2-Calibration-Installer.exe)**
-— either straight from this folder, or from the
-[Releases](https://github.com/Buddman69/Automm3AdaptivePA/releases) page,
-which carries the same file — and double-click it. It carries the Q2
-settings; the X-Max 4 installer does not, and the two are not interchangeable.
+Download **`QIDI-Q2-Calibration-Installer.exe`** from the
+[Releases](https://github.com/Buddman69/Automm3AdaptivePA/releases) page and
+double-click it. Nothing else is needed: no Python, no SSH client, no
+terminal.
+
+(It is not in the repository itself — it is a ~15 MB binary rebuilt on every
+change, and committing it would bloat the history. The source it is built
+from is everything else in this folder.)
+
+It carries the Q2 settings; the X-Max 4 installer does not, and the two are
+not interchangeable.
 
 It finds the printer on your network, asks for the login (defaults `qidi` /
 `qiditech`), copies the modules, installs `qidi_calibration_q2.cfg` and adds one
