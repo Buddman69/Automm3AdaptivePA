@@ -147,6 +147,19 @@ shutdown, and that sag sets hard on the tip. 170 °C is below where the melt flo
 freely but while a bead is still soft enough to scrape off. Wiping hot smears it;
 wiping cold will not shift it.
 
+### Purge chute filling up?
+
+Some filaments don't clear the chute reliably and it fills before a run
+finishes. `QIDI_AUTO_CALIBRATE_BED` runs the same calibration instead
+positioned at bed-centre with the bed lowered out of the way, so nothing
+lands in the chute:
+
+```gcode
+QIDI_AUTO_CALIBRATE_BED
+```
+
+Same parameters as `QIDI_AUTO_CALIBRATE` above.
+
 ### Options
 
 | Parameter | Default | What it does |
