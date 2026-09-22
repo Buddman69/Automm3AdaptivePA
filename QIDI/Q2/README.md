@@ -121,6 +121,21 @@ QIDI_CALIBRATE
 The full guide — what it measures, the options, how to read the output, and how
 to measure counts/gf — is in the main `README.md` alongside the modules.
 
+### Filament filling the purge chute instead of clearing it?
+
+Some filaments don't clear the chute reliably — they fill it instead. For
+those, use the bed routine: the same calibration, run over the centre of the
+bed with the bed lowered clear of the nozzle, so there's nothing to clog.
+
+```gcode
+QIDI_AUTO_CALIBRATE_BED
+```
+
+Same measurements, same output, just measured over the lowered bed instead of
+the chute. First run `QIDI_BED_PREPARE` on its own (motion only, no heat) to
+prove the bed drop before trusting the rest of the chain. See
+`CHANGELOG/2026-09-22-bed-routine.md` for the detail.
+
 ---
 
 ## What is in this folder
