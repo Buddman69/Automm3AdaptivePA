@@ -22,13 +22,14 @@ Built and verified on a **QIDI X-Max 4**.
 
 ### Windows — run the installer
 
-Download **[`QIDI-Max4-Calibration-Installer.exe`](QIDI-Max4-Calibration-Installer.exe)**
-— either straight from this folder, or from the
-[Releases](https://github.com/Buddman69/Automm3AdaptivePA/releases) page,
-which carries the same file — and double-click it. Nothing else is needed:
-no Python, no SSH client, no terminal.
+Download **`QIDI-Max4-Calibration-Installer.exe`** from the
+[Releases](https://github.com/Buddman69/Automm3AdaptivePA/releases) page and
+double-click it. Nothing else is needed: no Python, no SSH client, no
+terminal.
 
-The source it is built from is everything else in this folder.
+(It is not in the repository itself — it is a ~15 MB binary rebuilt on every
+change, and committing it would bloat the history. The source it is built
+from is everything else in this folder.)
 
 It will:
 
