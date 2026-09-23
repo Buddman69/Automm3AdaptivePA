@@ -46,6 +46,16 @@ exactly how.
 Releases are tagged `qidi-<model>-vX.Y.Z` (e.g. `qidi-max4-v1.1.0`) — one
 GitHub Release per tag is what makes it show up in the picker.
 
+**The very first time you ever run `QIDI_UPDATE` on a printer installed
+before this note was added, run it twice.** The first run installs whatever
+release you pick using the update script already on the printer; if that
+script is an old one, it may not do everything a newer one does. Running
+`QIDI_UPDATE` a second time (after the `FIRMWARE_RESTART` the first run asks
+for) installs the same release again, this time using the script that first
+run just put in place — which is what actually ensures every file the
+release ships is fully applied. A fresh install already gets the current
+script from the start, so this is a one-time step, not an every-update habit.
+
 ## Licence
 
 [PolyForm Strict 1.0.0](LICENSE.md). Free for personal and noncommercial use.
