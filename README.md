@@ -46,13 +46,29 @@ exactly how.
 Releases are tagged `qidi-<model>-vX.Y.Z` (e.g. `qidi-max4-v1.1.0`) — one
 GitHub Release per tag is what makes it show up in the picker.
 
+**After any update, restart Klipper from the machine/power menu ("Restart
+Klipper"), not just `FIRMWARE_RESTART` from the console.** Klipper never
+actually exits and restarts its own process on `RESTART` or
+`FIRMWARE_RESTART` — both just reinitialize objects inside the same running
+Python process, which keeps every already-loaded module's code exactly as it
+was. A module that has never been loaded before (a command this update adds
+for the first time) still picks up correctly either way. But a module that
+was already running - which, after your first install, is every existing
+file, including `qidi_update.py` itself - keeps running its OLD code no
+matter how many times you `FIRMWARE_RESTART`, because the file on disk
+changed but Python's copy in memory did not. Only a real "Restart Klipper"
+(from Fluidd's machine panel, or Moonraker's own service restart) actually
+respawns the process and picks the new code up.
+
 **The very first time you ever run `QIDI_UPDATE` on a printer installed
-before this note was added, run it twice.** The first run installs whatever
+before this note was added, run it twice**, with a real Klipper restart
+(not just `FIRMWARE_RESTART`) in between. The first run installs whatever
 release you pick using the update script already on the printer; if that
-script is an old one, it may not do everything a newer one does. Running
-`QIDI_UPDATE` a second time (after the `FIRMWARE_RESTART` the first run asks
-for) installs the same release again, this time using the script that first
-run just put in place — which is what actually ensures every file the
+script is an old one, it may not do everything a newer one does — and per the
+note above, it will keep being the old script until Klipper actually
+restarts, not merely reinitializes. Once it has, running `QIDI_UPDATE` a
+second time installs the same release again, this time using the script that
+first run just put in place, which is what actually ensures every file the
 release ships is fully applied. A fresh install already gets the current
 script from the start, so this is a one-time step, not an every-update habit.
 
