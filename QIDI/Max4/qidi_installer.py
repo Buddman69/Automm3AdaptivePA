@@ -46,17 +46,18 @@ MOONRAKER_PORT = 7125
 # the thing that gives you console commands, so this installer puts it there.
 # After that QIDI_UPDATE maintains everything, including itself.
 #
-# qidi_flow_bed_search.py / qidi_pa_bed_measure.py / qidi_auto_cal_bed.py are
-# the BED routine (QIDI_AUTO_CALIBRATE_BED) - separate files from the chute
-# versions, so nothing about them can change what the chute routine does.
+# qidi_flow_bed_search.py / qidi_pa_bed_measure.py / qidi_auto_cal_bed.py /
+# qidi_cal_wizard_bed.py are the BED routine (QIDI_CALIBRATE_BED /
+# QIDI_AUTO_CALIBRATE_BED) - separate files from the chute versions, so
+# nothing about them can change what the chute routine does.
 CORE = ["qidi_flow_ramp.py", "qidi_pa_envelope.py", "qidi_pa_measure.py",
         "qidi_pa_table.py", "qidi_auto_cal.py", "qidi_cal_wizard.py",
         "qidi_update.py", "qidi_flow_bed_search.py", "qidi_pa_bed_measure.py",
-        "qidi_auto_cal_bed.py"]
+        "qidi_auto_cal_bed.py", "qidi_cal_wizard_bed.py"]
 CORE_SECTIONS = ["qidi_flow_ramp", "qidi_pa_envelope", "qidi_pa_measure",
                  "qidi_pa_table", "qidi_auto_cal", "qidi_cal_wizard",
                  "qidi_update", "qidi_flow_bed_search", "qidi_pa_bed_measure",
-                 "qidi_auto_cal_bed"]
+                 "qidi_auto_cal_bed", "qidi_cal_wizard_bed"]
 
 DIAG = ["qidi_cs_locate.py", "qidi_cs_read.py", "qidi_cs_proto.py",
         "qidi_cs_timing.py", "qidi_cs_clock.py", "qidi_cs_validate.py",

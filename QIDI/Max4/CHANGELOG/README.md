@@ -13,3 +13,6 @@ existing one, and anything a later port to another model needs to know.
 - [2026-09-22 — the bed routine](2026-09-22-bed-routine.md) — `QIDI_AUTO_CALIBRATE_BED`,
   for filament that will not clear the purge chute reliably. New files only;
   nothing existing was changed.
+- [2026-09-23 — the bed wizard](2026-09-23-bed-wizard.md) — `QIDI_CALIBRATE_BED`,
+  the six-question dialog front door for the bed routine, matching
+  `QIDI_CALIBRATE`. One new file; nothing existing was changed.
