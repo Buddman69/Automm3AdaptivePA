@@ -79,3 +79,31 @@ Commercial use requires a paid licence — contact the author. Each model folder
 carries its own copy of this file, since each is meant to work standalone if
 extracted on its own; this one is the canonical copy GitHub shows in the
 repo sidebar.
+
+## Troubleshooting
+
+**A new command doesn't show up after `QIDI_UPDATE` says it installed**
+(Max4 v1.2.3 onwards) — power cycle the printer, the actual switch off and
+on. `FIRMWARE_RESTART` and Fluidd's "Restart Klipper" button both just
+reinitialize objects inside the same already-running Python process; they do
+not reload code that was already in memory, which after your first install
+is everything, including `QIDI_UPDATE` itself — see the note on this under
+Updating above. A power cycle is the one thing guaranteed to actually
+respawn it. Then run `QIDI_UPDATE` again, and restart Klipper once more
+afterwards to load whatever the now-correctly-running update just added.
+
+**`update: download is larger than 25 MB - refusing`** — a release's
+zipball is too large. This is a repo-side problem, not something you did;
+let me know. In the meantime, install with the standalone installer
+instead — it never downloads a release zipball, so it never hits this
+limit: run the model's `.exe` from the [Releases
+page](https://github.com/Buddman69/Automm3AdaptivePA/releases) (Windows), or
+`./install.sh <printer-ip>` (macOS/Linux). See the model's own README's
+Install section for detail.
+
+**Your printer's model doesn't appear in the `QIDI_UPDATE` picker** — no
+release has been tagged for it yet. Let me know (Reddit or the wishlist
+link at the top of this page) and I'll add it.
+
+**An update went wrong** — `QIDI_UPDATE ROLLBACK=1` restores the files from
+before the last install.

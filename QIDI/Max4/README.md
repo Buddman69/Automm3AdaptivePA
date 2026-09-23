@@ -364,3 +364,24 @@ outside its own temporary folder - and asking would not make any scanner happier
 
 The source is here to read, and `install.sh` does the same job without an
 executable at all if you would rather.
+
+---
+
+## Troubleshooting
+
+**Purge chute fills up / gets blobby before a run finishes** — use
+`QIDI_CALIBRATE_BED` instead. See "Purge chute filling up?" above.
+
+**Run aborts citing force variance / possible slip** — this is the
+deliberate slip-detection safety abort (see Safety above), not a bug.
+Before retrying, check the filament isn't snagged at the spool, the drive
+gear isn't slipping, and the nozzle isn't partially clogged.
+
+**Load cell doesn't move enough during `QIDI_CS_READ`** — run it twice:
+once without touching the nozzle, once pressing it by hand. The two should
+differ by **at least 500 gf**. If they don't, stop - see "First run" above.
+
+**PA / max-flow numbers look implausible** — check `counts_per_gf` is
+calibrated for your machine (see "Calibrating counts per gram" above), that
+`LAYER`/`WIDTH`/`NOZZLE` match what you actually slice with, and that the
+calibration temperature matches the filament.
