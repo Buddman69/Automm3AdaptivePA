@@ -49,11 +49,25 @@ ran the OLD version of it. `QIDI_UPDATE` has to be run **twice**:
    currently-loaded (old, buggy) code, which still only copies files. This
    run does NOT add the missing section, because the code doing the copying
    is still the old code.
-2. `FIRMWARE_RESTART` loads the new `qidi_update.py`.
+2. **Power cycle the printer** - the actual switch, off and on - to load the
+   new `qidi_update.py`. See the correction below for why.
 3. Second `QIDI_UPDATE` run (installing the same release again, or the next
    one) now executes the FIXED `_install()`, which checks every module in
    that release against `printer.cfg` and adds whatever is missing -
    including `[qidi_cal_wizard_bed]`, left over from the first run.
+
+**CORRECTED 2026-09-23 - step 2 above originally said `FIRMWARE_RESTART`.
+That is wrong.** Verified live: `FIRMWARE_RESTART`, `RESTART`, and Fluidd's
+"Restart Klipper" button all just reinitialize objects inside the same
+already-running Python process - checked directly on the affected printer,
+where the klippy process's own PID and start time were unchanged after
+three separate uses of that button. None of them clear Python's module
+cache, so a module that was already imported (which, after the first
+install, includes `qidi_update.py` itself) keeps running its old in-memory
+code regardless of how many times any of those are used. Only an actual
+power cycle is guaranteed to respawn the process. Full detail and the root
+README's matching guidance: `2026-09-23-update-halted-printer.md` and the
+root README's Updating / Troubleshooting sections.
 
 ## Tests
 
