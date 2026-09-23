@@ -20,3 +20,7 @@ existing one, and anything a later port to another model needs to know.
   a brand-new module's `.py` file installed but its `[section]` was never
   added, so Klipper never loaded it. Fixed in `qidi_update.py`; needs
   `QIDI_UPDATE` run twice to take effect on a printer that already hit it.
+- [2026-09-23 — QIDI_UPDATE halted a real printer; fixed](2026-09-23-update-halted-printer.md) —
+  the fix above added a section for `qidi_installer.py` too (not a Klipper
+  extra), and Klipper refused to start. Fixed by only adding a section for
+  files that actually define `load_config`.
