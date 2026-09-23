@@ -16,3 +16,7 @@ existing one, and anything a later port to another model needs to know.
 - [2026-09-23 — the bed wizard](2026-09-23-bed-wizard.md) — `QIDI_CALIBRATE_BED`,
   the six-question dialog front door for the bed routine, matching
   `QIDI_CALIBRATE`. One new file; nothing existing was changed.
+- [2026-09-23 — QIDI_UPDATE adds missing printer.cfg sections](2026-09-23-update-missing-sections.md) —
+  a brand-new module's `.py` file installed but its `[section]` was never
+  added, so Klipper never loaded it. Fixed in `qidi_update.py`; needs
+  `QIDI_UPDATE` run twice to take effect on a printer that already hit it.
