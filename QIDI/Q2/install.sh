@@ -70,20 +70,23 @@ for a in "$@"; do
   esac
 done
 
-# The ten modules QIDI_CALIBRATE and QIDI_UPDATE need. Section name ==
+# The eleven modules QIDI_CALIBRATE and QIDI_UPDATE need. Section name ==
 # module name, so there is no versioned-copy confusion to inherit.
 #
-# qidi_flow_bed_search.py, qidi_pa_bed_measure.py and qidi_auto_cal_bed.py are
-# the BED routine - QIDI_AUTO_CALIBRATE_BED, for filament that will not clear
-# the purge chute reliably. Separate files from the chute versions on
-# purpose, so nothing about them can ever change what the chute routine does.
-# See CHANGELOG/ in this folder.
+# qidi_flow_bed_search.py, qidi_pa_bed_measure.py, qidi_auto_cal_bed.py and
+# qidi_cal_wizard_bed.py are the BED routine - QIDI_CALIBRATE_BED /
+# QIDI_AUTO_CALIBRATE_BED, for filament that will not clear the purge chute
+# reliably. Separate files from the chute versions on purpose, so nothing
+# about them can ever change what the chute routine does. See CHANGELOG/ in
+# this folder.
 CORE=(qidi_flow_ramp.py qidi_pa_envelope.py qidi_pa_measure.py
       qidi_pa_table.py qidi_auto_cal.py qidi_cal_wizard.py qidi_update.py
-      qidi_flow_bed_search.py qidi_pa_bed_measure.py qidi_auto_cal_bed.py)
+      qidi_flow_bed_search.py qidi_pa_bed_measure.py qidi_auto_cal_bed.py
+      qidi_cal_wizard_bed.py)
 CORE_SECTIONS=(qidi_flow_ramp qidi_pa_envelope qidi_pa_measure
                qidi_pa_table qidi_auto_cal qidi_cal_wizard qidi_update
-               qidi_flow_bed_search qidi_pa_bed_measure qidi_auto_cal_bed)
+               qidi_flow_bed_search qidi_pa_bed_measure qidi_auto_cal_bed
+               qidi_cal_wizard_bed)
 
 # Read-only probes. Not needed to calibrate; useful for bringing up a new
 # machine or diagnosing a sensor. QIDI_CS_READ is in the README's first-run

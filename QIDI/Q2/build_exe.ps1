@@ -39,11 +39,11 @@ $Modules = @(
     "qidi_flow_ramp.py", "qidi_pa_envelope.py", "qidi_pa_measure.py",
     "qidi_pa_table.py", "qidi_auto_cal.py", "qidi_cal_wizard.py",
     "qidi_update.py",
-    # The bed routine (QIDI_AUTO_CALIBRATE_BED) - separate files from the
-    # chute versions above, so nothing about them can change what the chute
-    # routine does. See CHANGELOG/.
+    # The bed routine (QIDI_CALIBRATE_BED / QIDI_AUTO_CALIBRATE_BED) -
+    # separate files from the chute versions above, so nothing about them can
+    # change what the chute routine does. See CHANGELOG/.
     "qidi_flow_bed_search.py", "qidi_pa_bed_measure.py",
-    "qidi_auto_cal_bed.py",
+    "qidi_auto_cal_bed.py", "qidi_cal_wizard_bed.py",
     "qidi_cs_locate.py", "qidi_cs_read.py", "qidi_cs_proto.py",
     "qidi_cs_timing.py", "qidi_cs_clock.py", "qidi_cs_validate.py",
     "qidi_cs_bulk.py", "qidi_cs_batch.py",

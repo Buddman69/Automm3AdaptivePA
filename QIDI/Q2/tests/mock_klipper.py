@@ -62,9 +62,16 @@ class MockPrinter:
     def __init__(self, reactor):
         self._reactor = reactor
         self._objects = {'gcode': MockGCode()}
+        # Real Klipper's start args always carry 'config_file' - it is how
+        # configfile.py itself finds printer.cfg to implement SAVE_CONFIG.
+        # Empty by default; tests that need it set self._start_args directly.
+        self._start_args = {}
 
     def get_reactor(self):
         return self._reactor
+
+    def get_start_args(self):
+        return self._start_args
 
     def add(self, name, obj):
         self._objects[name] = obj

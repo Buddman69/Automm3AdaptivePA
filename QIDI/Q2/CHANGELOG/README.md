@@ -18,3 +18,12 @@ using this machine's own measured values rather than copying the X-Max 4's.
   for filament that will not clear the purge chute reliably. Ported from
   `QIDI/Max4`'s same-day entry, using this Q2's own measured values. New files
   only; nothing existing was changed.
+- [2026-09-23 — the bed wizard](2026-09-23-bed-wizard.md) — `QIDI_CALIBRATE_BED`,
+  the dialog front door for the bed routine, matching `QIDI_CALIBRATE`. Ported
+  from `QIDI/Max4`'s same-day entry. New file only; zero substitution needed
+  in its test.
+- [2026-09-23 — QIDI_UPDATE adds sections for brand-new modules](2026-09-23-update-sections.md) —
+  fixes `QIDI_UPDATE` silently installing a brand-new module's files without
+  ever adding its `printer.cfg` section, so the command never registered.
+  Ports two Max4 entries as one, since this Q2 goes straight to the fixed
+  result and never shipped the intermediate broken state Max4 hit live.

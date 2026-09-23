@@ -19,6 +19,17 @@
 >
 > **First run watched, with your hand near the power switch.** Do the dry run
 > first — it heats nothing and moves nothing.
+>
+> ## ⚠ REQUIRES FIRMWARE `01.01.02.04` OR NEWER
+>
+> Verified only against QIDI's `01.01.02.04` (2026-08-05) release and the
+> matching 2026-01 GitHub source. **Older firmware is not supported and there
+> is no plan to support it.** On at least one printer running `1.1.1`, the
+> load cell's driver exposes `read_origin_data` differently — the calibration
+> refuses to run rather than guess, with `flow_ramp: read_origin_data is not
+> callable` in the console. That refusal is the safety design working
+> correctly, not a crash; nothing was damaged. **Update the printer's
+> firmware to `01.01.02.04` or newer before installing.**
 
 ---
 
@@ -118,8 +129,8 @@ thing, watched:
 QIDI_CALIBRATE
 ```
 
-The full guide — what it measures, the options, how to read the output, and how
-to measure counts/gf — is in the main `README.md` alongside the modules.
+See "Updating" and "Troubleshooting" below for what to do after an update,
+and for what to check if a run behaves oddly.
 
 ### Filament filling the purge chute instead of clearing it?
 
@@ -128,13 +139,63 @@ those, use the bed routine: the same calibration, run over the centre of the
 bed with the bed lowered clear of the nozzle, so there's nothing to clog.
 
 ```gcode
-QIDI_AUTO_CALIBRATE_BED
+QIDI_CALIBRATE_BED DRY=1
 ```
 
-Same measurements, same output, just measured over the lowered bed instead of
-the chute. First run `QIDI_BED_PREPARE` on its own (motion only, no heat) to
+Same six-question dialog as `QIDI_CALIBRATE`, same buttons-only Fluidd
+constraint, same typed-parameter workaround (see Troubleshooting). The
+non-dialog command it runs underneath, if you'd rather script it directly, is
+`QIDI_AUTO_CALIBRATE_BED` — same parameters as `QIDI_AUTO_CALIBRATE`. Same
+measurements, same output, just measured over the lowered bed instead of the
+chute. First run `QIDI_BED_PREPARE` on its own (motion only, no heat) to
 prove the bed drop before trusting the rest of the chain. See
-`CHANGELOG/2026-09-22-bed-routine.md` for the detail.
+`CHANGELOG/2026-09-22-bed-routine.md` and `CHANGELOG/2026-09-23-bed-wizard.md`
+for the detail.
+
+---
+
+## Updating
+
+`QIDI_UPDATE` in the printer's own web console fetches new releases from this
+repo directly — no terminal, no re-running the installer:
+
+```gcode
+QIDI_UPDATE
+```
+
+It asks release → confirm as a dialog, the same mechanism as `QIDI_CALIBRATE`.
+Nothing is swapped onto the live files until the new version has downloaded,
+compiled, and test-imported in a subprocess — a file that would stop Klipper
+starting is refused before it ever reaches `klippy/extras`. `QIDI_UPDATE
+ROLLBACK=1` restores the files from before the last install if something
+still needs undoing.
+
+**After any update, restart Klipper with a real power cycle — the actual
+switch, off and on — not `FIRMWARE_RESTART` or Fluidd's "Restart Klipper"
+button.** Neither of those ever exits and restarts Klipper's own process;
+both just reinitialize objects inside the same already-running Python
+program, so every module that was already loaded — which after your first
+install is everything, including `qidi_update.py` itself — keeps running its
+OLD code no matter how many times you press them, because the file on disk
+changed but Python's copy in memory did not. Only a genuine process respawn
+picks up the new code. A command this update adds for the very first time
+(never loaded before) can still register on a plain restart; the risk is
+specifically for files that already existed.
+
+**The first time you ever run `QIDI_UPDATE` on this Q2, run it twice**, with
+a real power cycle in between:
+
+1. Run `QIDI_UPDATE` — installs the chosen release using whatever
+   `qidi_update.py` is already on the printer.
+2. **Power cycle** — off and on at the switch.
+3. Run `QIDI_UPDATE` again — this time the *newly installed* update script
+   runs, which is what actually guarantees every file and `printer.cfg`
+   section the release ships gets applied, including any brand-new command.
+
+Once that first round trip is done, later updates that only change existing
+commands need just one `QIDI_UPDATE` plus one power cycle. An update whose
+release notes mention a brand-new command name is worth treating as "first
+time" again, for the reason above.
 
 ---
 
@@ -157,3 +218,56 @@ than trust them.
 
 PolyForm Strict 1.0.0 — see `LICENSE.md` alongside the modules. Free for
 personal and noncommercial use; commercial use requires a paid annual licence.
+
+---
+
+## Troubleshooting
+
+**Console shows `flow_ramp: read_origin_data is not callable`** — your
+firmware is older than `01.01.02.04` (see the warning box at the top). Older
+firmware exposes the load cell's read call differently, and the calibration
+refuses to guess at an unfamiliar driver rather than run blind. Nothing heats
+or moves when it hits this check — it's the safety design working, not a
+crash. Update the printer's firmware and try again; older firmware is not
+currently supported.
+
+**Want to type numbers instead of clicking through the dialog** — Fluidd's
+prompts are buttons only; there's no text-input verb a Klipper macro can use,
+so this isn't fixable short of a full slicer-side integration. The closest
+equivalent is typing values as parameters on the command itself, which skips
+straight to the review screen with nothing left to click but START:
+
+```gcode
+QIDI_CALIBRATE TEMP=275 NOZZLE=0.4 LAYER=0.20 WIDTH=0.42 BLOCKS=12 POINTS=5
+```
+
+Any parameter you omit still shows up as a normal dialog screen. Giving
+`NOZZLE=` alone seeds the geometry screen's numbers but still shows it for
+confirmation; giving `LAYER=` and `WIDTH=` together is what actually skips
+it. Same parameters work on `QIDI_CALIBRATE_BED`.
+
+**`QIDI_UPDATE` says it installed, but the new command isn't there** — see
+"Updating" above. This is almost always the module-cache gap: run
+`QIDI_UPDATE` once more, power cycle (not `FIRMWARE_RESTART`), then run it a
+second time.
+
+**Purge chute fills up / gets blobby before a run finishes** — use
+`QIDI_CALIBRATE_BED` instead; see "Filament filling the purge chute instead
+of clearing it?" above.
+
+**Run aborts citing force variance / possible slip** — the deliberate
+slip-detection safety abort (`SAFETY.md`, rule 2), not a bug. Check the
+filament isn't snagged at the spool, the drive gear isn't slipping, and the
+nozzle isn't partially clogged before retrying.
+
+**Load cell doesn't move enough during `QIDI_CS_READ`** — run it twice: once
+without touching the nozzle, once pressing it by hand. The two readings
+should differ by at least 500 gf. If they don't, stop — something is wrong
+with the sensor path, not the calibration.
+
+**PA / max-flow numbers look implausible** — check `counts_per_gf` is
+calibrated for *your* cell, not just left at the shipped **201** (see "The
+one number you must measure yourself" above — that figure came from one
+specific Q2 and machines of the same family have measured 11% apart), that
+`LAYER`/`WIDTH`/`NOZZLE` match what you actually slice with, and that the
+calibration temperature matches the filament.

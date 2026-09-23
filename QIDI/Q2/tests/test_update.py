@@ -36,9 +36,15 @@ RELEASES = [
     {'tag_name': 'v3.0.0', 'prerelease': False},
 ]
 
-GOOD = "import os\nVALUE = 1\n"
+GOOD = "import os\ndef load_config(config):\n    return object()\n"
 SYNTAX_BAD = "def broken(:\n    pass\n"
 IMPORT_BAD = "raise RuntimeError('boom at import time')\n"
+# Imports cleanly - so the compile/import guards both pass it - but is not a
+# Klipper extra, exactly like qidi_installer.py (the Windows PC-side
+# installer). The regression case for the bug that halted a real printer:
+# an earlier version handed EVERY qidi_*.py name to _ensure_sections(),
+# added [qidi_installer] to printer.cfg, and Klipper refused to start.
+NOT_AN_EXTRA = "import os\nVALUE = 1\n"
 
 
 def parse(lines):
@@ -289,6 +295,122 @@ def main():
     got2 = open(os.path.join(extras2, 'qidi_thing.py')).read()
     ok &= check("and selecting Q2 installs the Q2 file, not Max4's",
                 got2 == "VALUE = 'q2'\n", got2)
+
+    print("\n== THE BUG FOUND LIVE 2026-09-23, FIXED: a brand-new module's "
+          "config section is added, not just its .py file ==")
+    # qidi_cal_wizard_bed.py installed via QIDI_UPDATE and Klipper restarted,
+    # but QIDI_CALIBRATE_BED did not exist - nothing had ever added
+    # [qidi_cal_wizard_bed] to printer.cfg, so Klipper never loaded the file
+    # it had just been given. This is the scenario that catches that class of
+    # bug: a module the printer.cfg fixture has never seen before.
+    extras = tempfile.mkdtemp()
+    cfg_dir = tempfile.mkdtemp()
+    cfg_path = os.path.join(cfg_dir, 'printer.cfg')
+    with open(cfg_path, 'w') as f:
+        f.write("[qidi_thing]\nsome_option: 1\n\n"
+                "#*# <---------------------- SAVE_CONFIG ---------------------->\n"
+                "#*# DO NOT EDIT THIS BLOCK OR BELOW\n")
+    with open(os.path.join(extras, 'qidi_thing.py'), 'w') as f:
+        f.write("VALUE = 0\n")
+    g, mod, _ = build(extras=extras,
+                      zip_files={'qidi_thing.py': GOOD,
+                                 'qidi_brand_new.py': GOOD})
+    mod.printer._start_args['config_file'] = cfg_path
+    g.run('QIDI_UPDATE')
+    g.run('_QIDI_UPD_STEP', SET='brand', VAL='qidi')
+    g.run('_QIDI_UPD_STEP', SET='model', VAL='max4')
+    g.run('_QIDI_UPD_STEP', SET='tag', VAL='qidi-max4-v2.1.1')
+    out = "\n".join(g.run('_QIDI_UPD_STEP', GO=1))
+    cfg_after = open(cfg_path).read()
+    ok &= check("the new module's section was added",
+                bool(re.search(r'(?m)^\[qidi_brand_new\]\s*$', cfg_after)),
+                cfg_after)
+    ok &= check("the EXISTING module's section was left alone, not duplicated",
+                cfg_after.count('[qidi_thing]') == 1, cfg_after)
+    ok &= check("the new section landed ABOVE the SAVE_CONFIG marker",
+                cfg_after.index('[qidi_brand_new]')
+                < cfg_after.index('SAVE_CONFIG'), cfg_after)
+    ok &= check("everything below the marker survived untouched",
+                cfg_after.endswith("#*# DO NOT EDIT THIS BLOCK OR BELOW\n"),
+                cfg_after)
+    ok &= check("printer.cfg was backed up first",
+                any(f.startswith('printer.cfg.bak-upd-')
+                    for f in os.listdir(cfg_dir)),
+                str(os.listdir(cfg_dir)))
+    ok &= check("and said so in the console output",
+                'added missing section' in out and 'qidi_brand_new' in out,
+                out)
+
+    print("\n== THE BUG THAT HALTED A REAL PRINTER, FIXED: a file that "
+          "imports cleanly but is not an extra never gets a section ==")
+    # qidi_installer.py is real, valid, importable Python - it is the
+    # Windows PC-side installer, not a Klipper extra, and defines no
+    # load_config. An earlier version of _ensure_sections() had no way to
+    # tell it apart from a genuine new extra, added [qidi_installer] to
+    # printer.cfg, and Klipper halted on "Section 'qidi_installer' is not a
+    # valid config section" - correctly, since it is not one.
+    extras = tempfile.mkdtemp()
+    cfg_dir = tempfile.mkdtemp()
+    cfg_path = os.path.join(cfg_dir, 'printer.cfg')
+    with open(cfg_path, 'w') as f:
+        f.write("#*# <---------------------- SAVE_CONFIG ---------------------->\n")
+    g, mod, _ = build(extras=extras,
+                      zip_files={'qidi_real_extra.py': GOOD,
+                                 'qidi_installer.py': NOT_AN_EXTRA})
+    mod.printer._start_args['config_file'] = cfg_path
+    g.run('QIDI_UPDATE')
+    g.run('_QIDI_UPD_STEP', SET='tag', VAL='qidi-max4-v2.1.1')
+    out = "\n".join(g.run('_QIDI_UPD_STEP', GO=1))
+    ok &= check("qidi_installer.py was still copied into extras",
+                os.path.exists(os.path.join(extras, 'qidi_installer.py')))
+    cfg_after = open(cfg_path).read()
+    ok &= check("but it never got a printer.cfg section",
+                '[qidi_installer]' not in cfg_after, cfg_after)
+    ok &= check("the genuine extra DID get one",
+                bool(re.search(r'(?m)^\[qidi_real_extra\]\s*$', cfg_after)),
+                cfg_after)
+    ok &= check("only the genuine extra was named in the console output",
+                'qidi_real_extra' in out and 'qidi_installer' not in out, out)
+
+    print("\n== a module whose section already exists is left alone ==")
+    extras = tempfile.mkdtemp()
+    cfg_dir = tempfile.mkdtemp()
+    cfg_path = os.path.join(cfg_dir, 'printer.cfg')
+    with open(cfg_path, 'w') as f:
+        f.write("[qidi_thing]\n")
+    before = open(cfg_path).read()
+    with open(os.path.join(extras, 'qidi_thing.py'), 'w') as f:
+        f.write("VALUE = 0\n")
+    g, mod, _ = build(extras=extras, zip_files={'qidi_thing.py': GOOD})
+    mod.printer._start_args['config_file'] = cfg_path
+    g.run('QIDI_UPDATE')
+    g.run('_QIDI_UPD_STEP', SET='tag', VAL='qidi-max4-v2.1.1')
+    out = "\n".join(g.run('_QIDI_UPD_STEP', GO=1))
+    ok &= check("printer.cfg is byte-identical - no section was added or "
+                "duplicated", open(cfg_path).read() == before,
+                open(cfg_path).read())
+    ok &= check("and no backup was made - nothing needed changing",
+                os.listdir(cfg_dir) == ['printer.cfg'],
+                str(os.listdir(cfg_dir)))
+    ok &= check("nothing said about sections in the output",
+                'section' not in out.lower(), out)
+
+    print("\n== a missing printer.cfg does not undo an otherwise-good "
+          "install ==")
+    extras = tempfile.mkdtemp()
+    with open(os.path.join(extras, 'qidi_thing.py'), 'w') as f:
+        f.write("VALUE = 0\n")
+    g, mod, _ = build(extras=extras, zip_files={'qidi_thing.py': GOOD})
+    # No config_file in start args at all - the common case in these tests,
+    # and also whatever a real host would give if it could not be found.
+    g.run('QIDI_UPDATE')
+    g.run('_QIDI_UPD_STEP', SET='tag', VAL='qidi-max4-v2.1.1')
+    g.run('_QIDI_UPD_STEP', GO=1)
+    ok &= check("the module still installed",
+                open(os.path.join(extras, 'qidi_thing.py')).read() == GOOD)
+    ok &= check("and it is recorded as installed",
+                mod.installed().get('tag') == 'qidi-max4-v2.1.1',
+                str(mod.installed()))
 
     print("\n== CHECK reports without changing anything ==")
     extras = tempfile.mkdtemp()

@@ -65,9 +65,48 @@
 #   Step 3 is the one that earns its keep: py_compile passes a file that raises
 #   the moment it is imported.
 #
+# WHY IT ALSO TOUCHES printer.cfg NOW (added 2026-09-23, found live)
+#   A file landing in klippy/extras is not enough - Klipper only imports an
+#   extra whose [section] exists in printer.cfg. The fresh installer
+#   (printer_setup.sh) has always added any missing section; QIDI_UPDATE never
+#   did, because every module it had ever shipped already had its section from
+#   the original install. That gap was invisible until the first release that
+#   added a BRAND NEW module (qidi_cal_wizard_bed.py / QIDI_CALIBRATE_BED,
+#   v1.2.1): the .py file installed and Klipper restarted, but nothing had
+#   ever added [qidi_cal_wizard_bed], so Klipper never loaded it and the
+#   command silently did not exist - no error, because there was nothing to
+#   error about, just a command that was never registered.
+#
+#   _ensure_sections() closes that gap the same way printer_setup.sh does:
+#   any module just installed whose [section] is not already in printer.cfg
+#   gets an empty one inserted above the #*# SAVE_CONFIG marker (Klipper
+#   rewrites everything below that line on every save, so anything placed
+#   after it is silently eaten). printer.cfg is backed up first, the same
+#   backup-before-touch discipline as the module files themselves. Best-
+#   effort and non-fatal: by the time this runs the files are already
+#   validated and copied, so a printer.cfg that cannot be found or written is
+#   reported, not treated as a reason to undo an otherwise-good install - the
+#   user can add the section by hand, same as a DRY install.sh run would have
+#   shown them to.
+#
+#   THIS HALTED A REAL PRINTER, ONCE (same day). The first version of this
+#   handed _ensure_sections() EVERY qidi_*.py name INSTALLABLE matched -
+#   including qidi_installer.py, the Windows PC-side installer, which is
+#   valid importable Python (so py_compile and the import guard both pass
+#   it) but defines no load_config. It got [qidi_installer] added to
+#   printer.cfg, and Klipper halted on "Section 'qidi_installer' is not a
+#   valid config section" - correctly, since it genuinely is not one.
+#   Fixed by having _validate() report back WHICH imported files actually
+#   define load_config, by inspecting the real imported module in the same
+#   subprocess that already tests importing it - not by naming
+#   qidi_installer.py specifically, so any future companion script that
+#   is not a real extra is caught the same way without being listed here.
+#
 # USAGE
 #   [qidi_update]
 #   repo: Buddman69/Automm3AdaptivePA
+#   #cfg_path: ~/printer_data/config/printer.cfg   # override only - normally
+#                                                    # found automatically
 #
 #   QIDI_UPDATE                 pick brand, model, release, confirm
 #   QIDI_UPDATE CHECK=1         print what is installed and what is newest
@@ -108,6 +147,10 @@ TAG_RE = re.compile(r'^([A-Za-z0-9]+)-([A-Za-z0-9.]+)-v(\d[A-Za-z0-9.\-_]*)$')
 # cannot drop arbitrary filenames onto the printer.
 INSTALLABLE = re.compile(r'^qidi_[A-Za-z0-9_]+\.py$')
 
+# Anchor for inserting a missing config section, identical to printer_setup.sh's
+# grep pattern - the two must always agree on what counts as "the marker".
+SAVE_CONFIG_RE = re.compile(r'^#\*# <-* SAVE_CONFIG', re.MULTILINE)
+
 PRETTY = {'qidi': 'QIDI', 'max4': 'Max4', 'q2': 'Q2'}
 
 
@@ -129,6 +172,9 @@ class QidiUpdate:
         self.reactor = self.printer.get_reactor()
         self.gcode = self.printer.lookup_object('gcode')
         self.repo = config.get('repo', DEFAULT_REPO).strip().strip('/')
+        # Override only - normally found from Klipper's own start args (see
+        # _cfg_path). Escape hatch for a host where that is ever wrong.
+        self.cfg_path_override = config.get('cfg_path', None)
         self.extras = os.path.dirname(os.path.abspath(__file__))
         data = config.get('data_dir', '~/printer_data/qidi_update')
         self.data_dir = os.path.expanduser(data)
@@ -269,7 +315,8 @@ class QidiUpdate:
                  "Files are downloaded, compiled and test-imported",
                  "before anything is replaced. The current files are",
                  "backed up first, and QIDI_UPDATE ROLLBACK=1 restores",
-                 "them.",
+                 "them. Any brand-new command also gets an empty",
+                 "section added to printer.cfg, backed up first too.",
                  "",
                  "Klipper restarts afterwards."],
                 [("INSTALL", "_QIDI_UPD_STEP GO=1", "primary")],
@@ -349,7 +396,24 @@ class QidiUpdate:
         return staging, sorted(set(names))
 
     def _validate(self, gcmd, staging, names):
-        """Guards 2 and 3: it must compile, AND it must import."""
+        """Guards 2 and 3: it must compile, AND it must import.
+
+        Also answers a question _ensure_sections() needs: not every
+        qidi_*.py this project ships is a Klipper extra. qidi_installer.py in
+        particular is the Windows PC-side installer - it imports fine (it is
+        valid Python) but defines no load_config, so it is not something
+        printer.cfg should ever have a [section] for. Found live: an earlier
+        version of this method returned nothing, so _ensure_sections() was
+        handed EVERY name including qidi_installer.py, added
+        [qidi_installer] to printer.cfg, and Klipper halted on "Section
+        'qidi_installer' is not a valid config section" - it imports cleanly,
+        so the compile/import guards above never catch this, but Klipper's
+        own object-creation step does, the hard way. The subprocess already
+        importing each module is asked to also report whether it defines
+        load_config, at no extra cost - and this is checked by ACTUALLY
+        importing and inspecting the module, not by guessing from the
+        filename, so any future companion script that is not a real extra is
+        caught the same way without needing to be named here."""
         import py_compile
         for n in names:
             try:
@@ -357,14 +421,18 @@ class QidiUpdate:
             except Exception as e:
                 raise gcmd.error("update: %s will not compile - NOTHING was "
                                  "changed. %s" % (n, str(e)[:160]))
+        extras = set()
         for n in names:
             mod = n[:-3]
             try:
                 p = subprocess.Popen(
-                    [sys.executable, '-c', 'import %s' % mod],
+                    [sys.executable, '-c',
+                     'import %s as m, sys; '
+                     'sys.stdout.write("1" if hasattr(m, "load_config") '
+                     'else "0")' % mod],
                     cwd=staging, stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE)
-                _o, err = p.communicate(timeout=30)
+                out, err = p.communicate(timeout=30)
                 rc = p.returncode
             except Exception as e:
                 raise gcmd.error("update: could not test-import %s (%s) - "
@@ -375,8 +443,74 @@ class QidiUpdate:
                     "update: %s compiles but fails on import - NOTHING was "
                     "changed. Klipper would not have restarted. %s"
                     % (n, tail[-200:]))
+            if out.strip() == b'1':
+                extras.add(n)
         gcmd.respond_info("update: %d file(s) compiled and imported cleanly"
                           % (len(names),))
+        return extras
+
+    # -- printer.cfg section insertion -------------------------------------
+    def _cfg_path(self):
+        if self.cfg_path_override:
+            return os.path.expanduser(self.cfg_path_override)
+        args = self.printer.get_start_args() or {}
+        p = args.get('config_file')
+        if not p:
+            raise RuntimeError("printer's start args have no config_file")
+        return os.path.expanduser(p)
+
+    def _ensure_sections(self, gcmd, names):
+        """Add an empty [section] for any just-installed module that does not
+        already have one - see the file header, WHY IT ALSO TOUCHES
+        printer.cfg NOW. `names` must already be filtered to files that
+        define load_config (_validate()'s return value) - a real Klipper
+        extra, not a companion script that merely happens to be named
+        qidi_*.py. Best-effort: the module files are already validated and
+        copied by the time this runs, so a problem here is reported, not
+        treated as a reason to undo the install."""
+        try:
+            path = self._cfg_path()
+        except Exception as e:
+            gcmd.respond_info(
+                "update: could not find printer.cfg (%s) - if any command "
+                "is missing after restart, add its [section] by hand"
+                % (str(e)[:120],))
+            return []
+        try:
+            with open(path) as f:
+                text = f.read()
+        except Exception as e:
+            gcmd.respond_info(
+                "update: could not read %s (%s) - if any command is missing "
+                "after restart, add its [section] by hand"
+                % (path, str(e)[:120]))
+            return []
+        missing = [n[:-3] for n in sorted(names)
+                  if not re.search(r'(?m)^\[%s\]\s*$' % re.escape(n[:-3]),
+                                   text)]
+        if not missing:
+            return []
+        try:
+            backup = path + '.bak-upd-' + time.strftime('%Y%m%d-%H%M%S')
+            shutil.copy2(path, backup)
+            insert = ''.join('\n[%s]\n' % s for s in missing)
+            m = SAVE_CONFIG_RE.search(text)
+            new_text = (text[:m.start()] + insert + '\n' + text[m.start():]
+                       if m else text + insert)
+            tmp = path + '.tmp'
+            with open(tmp, 'w') as f:
+                f.write(new_text)
+            os.replace(tmp, path)
+        except Exception as e:
+            gcmd.respond_info(
+                "update: could not update %s (%s) - add these section(s) by "
+                "hand: %s" % (path, str(e)[:120],
+                              ', '.join('[%s]' % s for s in missing)))
+            return []
+        gcmd.respond_info("update: printer.cfg backed up to %s" % (backup,))
+        gcmd.respond_info("update: added missing section(s): %s"
+                          % (', '.join('[%s]' % s for s in missing),))
+        return missing
 
     def _backup(self, names):
         stamp = time.strftime('%Y%m%d-%H%M%S')
@@ -393,13 +527,17 @@ class QidiUpdate:
     def _install(self, gcmd, tag):
         staging, names = self._stage(gcmd, tag)
         try:
-            self._validate(gcmd, staging, names)
+            extras = self._validate(gcmd, staging, names)
             dest, saved = self._backup(names)
             gcmd.respond_info("update: backed up %d file(s) to %s"
                               % (len(saved), dest))
             for n in names:
                 shutil.copy2(os.path.join(staging, n),
                              os.path.join(self.extras, n))
+            # Only files that actually define load_config get a printer.cfg
+            # section - see _validate()'s docstring for why that check
+            # matters (qidi_installer.py is a real, live example).
+            self._ensure_sections(gcmd, extras)
             os.makedirs(self.data_dir, exist_ok=True)
             with open(self.state_path, 'w') as f:
                 json.dump({'tag': tag, 'files': names, 'backup': dest,
