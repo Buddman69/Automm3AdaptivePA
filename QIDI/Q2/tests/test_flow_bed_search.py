@@ -223,6 +223,33 @@ def main():
         ok &= check("converted to a command error", False, "NameError escaped")
 
     print("\n" + ("ALL TESTS PASSED" if ok else "SOME TESTS FAILED"))
+
+    print("\n== the force abort follows the CONFIGURED counts_per_gf ==")
+    # A cell configured at 178 counts/gf must abort at 1650 gf, i.e.
+    # 1650 x 178 counts - not 1650 x 201 (the module default), which on that
+    # cell is ~1863 gf.
+    for cmd, kw in (('QIDI_FLOW_BED_SEARCH', dict(MAXQ=5, START=5, STEP=10, FINE=1)),):
+        tmp3 = tempfile.mkdtemp(); write_position(tmp3, x=150.0, y=150.0, bed_z=300.0)
+        g, mod, s, th, p = build(tmp3, position=[10.0, 10.0, 300.0, 0.0])
+        mod.counts_per_gf = 178.0
+        seen = []
+        orig_step = mod._run_step
+
+        def capture(gcmd, read, toolhead, idx, q, hz, tare, abort_counts,
+                    *a, **k):
+            seen.append(abort_counts)
+            return orig_step(gcmd, read, toolhead, idx, q, hz, tare,
+                             abort_counts, *a, **k)
+        mod._run_step = capture
+        try:
+            g.run(cmd, **kw)
+        except Exception:
+            pass
+        ok &= check("%s: abort at 1650 gf x 178 counts/gf = %d counts"
+                    % (cmd, int(FB.ABORT_GF * 178.0)),
+                    bool(seen) and set(seen) == {int(FB.ABORT_GF * 178.0)},
+                    str(sorted(set(seen))))
+
     return 0 if ok else 1
 
 
