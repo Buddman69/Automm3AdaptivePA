@@ -534,9 +534,10 @@ def main():
     jj = "\n".join(g.scripts)
     first = jj.split('SAVE_GCODE_STATE NAME=_qidi_pa_wipe')[1].split(
         'RESTORE_GCODE_STATE')[0]
-    # 6 long strokes x 2 moves + 4 short strokes x 2 moves + the park move.
-    want = 2 * PA.WIPE_PASSES + 2 * PA.WIPE_SHORT_PASSES + 1
-    ok &= check("which is %d X moves per wipe (%d long, %d short, plus park)"
+    # 6 long strokes x 2 moves + 4 short strokes x 2 moves, then the chute-flap
+    # release (X125) and the park move (X85, after the Y270 detour).
+    want = 2 * PA.WIPE_PASSES + 2 * PA.WIPE_SHORT_PASSES + 2
+    ok &= check("which is %d X moves per wipe (%d long, %d short, flap, park)"
                 % (want, PA.WIPE_PASSES, PA.WIPE_SHORT_PASSES),
                 first.count('G1 X') == want, str(first.count('G1 X')))
     # The short strokes must actually be shorter: every X in the wipe should sit
@@ -547,10 +548,22 @@ def main():
     # this Q2 build, WIPE_LO_OFFSET is 10.0 (matching QIDI's own
     # CLEAR_NOZZLE_PLR, which does not wipe all the way back to park), so park
     # and lo are two different points - 4 distinct stops: park < lo < short_hi
-    # < hi.
+    # < hi. Then the chute-flap release beyond hi: five.
     xs = sorted({float(t.split()[0]) for t in first.split('G1 X')[1:]})
-    ok &= check("park, lo, short_hi and hi are four distinct, ordered stops",
-                len(xs) == 4 and xs[0] < xs[1] < xs[2] < xs[3], str(xs))
+    ok &= check("park, lo, short_hi, hi and the flap release: five ordered stops",
+                len(xs) == 5 and xs[0] < xs[1] < xs[2] < xs[3] < xs[4]
+                and xs[4] == PA.FLAP_RELEASE_X, str(xs))
+    tail = [l for l in first.strip().split('\n') if l][-5:]
+    ok &= check("the wipe ends X125, dwell, out to Y270, across, in slowly",
+                tail == ['G1 X125.00 F10000', 'G4 P1000', 'G1 Y270.00 F10000',
+                         'G1 X85.00 F10000', 'G1 Y287.50 F1500'], str(tail))
+    flap = jj.split('SAVE_GCODE_STATE NAME=_qidi_pa_flap')
+    ok &= check("the prime is released the same way before the point is tared",
+                len(flap) == 2 and flap[1].split('RESTORE_GCODE_STATE')[0]
+                .strip().split('\n')[-3:] == ['G1 Y270.00 F10000',
+                                               'G1 X85.00 F10000',
+                                               'G1 Y287.50 F1500'],
+                jj[-600:])
     g, mod = hot(tempfile.mkdtemp())
     try:
         g.run('QIDI_PA_MEASURE', POINT='centre', BLOCKS=1, CYCLES=2)

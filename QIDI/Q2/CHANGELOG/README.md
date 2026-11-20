@@ -27,3 +27,9 @@ using this machine's own measured values rather than copying the X-Max 4's.
   ever adding its `printer.cfg` section, so the command never registered.
   Ports two Max4 entries as one, since this Q2 goes straight to the fixed
   result and never shipped the intermediate broken state Max4 hit live.
+- [2026-11-20 — open the purge chute's flap](2026-11-20-chute-flap.md) — the
+  toolhead holds the chute's flap shut from the park to X122, so every purge
+  piled up under the nozzle on the load cell. Wipes, Stage 1 measurements
+  and Stage 3 primes now end with a trip to X125 and back the
+  `MOVE_TO_TRASH` way (via Y270). `qidi_flow_ramp.py`, `qidi_pa_measure.py`
+  and their tests.

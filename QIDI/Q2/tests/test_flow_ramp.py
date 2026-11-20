@@ -296,8 +296,29 @@ def main():
     wipes = [x for x in g.scripts if 'X115.00' in x]
     ok &= check("sweeps the full wiper travel and returns to park_x",
                 bool(wipes) and wipes[0].count('X115.00') == FR.WIPE_PASSES
-                and wipes[0].rstrip().endswith('X85.00 F6000'),
+                and 'G1 X85.00 F' in wipes[0],
                 (wipes[0] if wipes else 'no wipe issued'))
+    # The chute flap: past X122 to release it, then back the MOVE_TO_TRASH
+    # way - out to Y270 BEFORE crossing back to X85, and in to Y287.5 slowly.
+    # Coming back along X at Y287.5 hits the chute and loses X steps.
+    tail = wipes[0].rstrip().split('\n')[-5:] if wipes else []
+    ok &= check("ends by opening the chute flap at X125, back via Y270",
+                tail == ['G1 X125.00 F10000', 'G4 P1000', 'G1 Y270.00 F10000',
+                         'G1 X85.00 F10000', 'G1 Y287.50 F1500'], str(tail))
+    ok &= check("never moves along X at Y287.5 after leaving X122",
+                all(not (l.startswith('G1 X') and float(l.split()[1][1:]) < 122)
+                    for l in tail[tail.index('G1 X125.00 F10000') + 1:
+                                  tail.index('G1 Y270.00 F10000')])
+                if 'G1 Y270.00 F10000' in tail else False, str(tail))
+    g, mod, s, th, p = build(tmp)
+    mod._release_flap(None, th)
+    ok &= check("a standalone flap release retracts, opens, returns the same way",
+                g.scripts[-1].split('\n') == [
+                    'M83', 'G1 E-1.000 F1800', 'G90', 'G1 X125.00 F10000',
+                    'G4 P1000', 'G1 Y270.00 F10000', 'G1 X85.00 F10000',
+                    'G1 Y287.50 F1500'], g.scripts[-1])
+    g, mod, s, th, p = build(tmp)
+    g.run('QIDI_FLOW_RAMP', STEPS=3, QMIN=2.0, QMAX=4.0, HZ=30, PRIME=0)
     ok &= check("default travel is wider than QIDI's +8..+27",
                 FR.WIPE_HI_OFFSET - FR.WIPE_LO_OFFSET > 19.0,
                 "%.1f mm" % (FR.WIPE_HI_OFFSET - FR.WIPE_LO_OFFSET,))
