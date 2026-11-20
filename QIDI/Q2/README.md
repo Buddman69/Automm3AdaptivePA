@@ -55,10 +55,11 @@ both, so they are stable across releases:
 
 That last row is the one that matters most. On the X-Max 4 the modules read
 `park_x` from `[gcode_macro _km_globals]`. The Q2 has no such macro, so
-`park_x` is set explicitly in `qidi_calibration_q2.cfg`. The modules **refuse
-to run** rather than fall back to a guess — a hardcoded 135 would put the wipe
-most of the way across a 275 mm bed, dragging a hot, extruding nozzle over the
-build surface.
+the Q2 modules **hardcode** the park (X85) and the wiper offsets (+10/+30)
+rather than fall back to the X-Max 4's 135, which would put the wipe most of
+the way across a 275 mm bed, dragging a hot, extruding nozzle over the build
+surface. They are not config options: `qidi_calibration_q2.cfg` shows them as
+comments only, because Klipper refuses to start on an option no module reads.
 
 ---
 
