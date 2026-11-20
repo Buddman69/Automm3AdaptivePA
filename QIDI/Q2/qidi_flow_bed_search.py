@@ -99,7 +99,13 @@ COUNTS_PER_GF = 201.0
 # against a 6.0 threshold the slope noise (+/-11 gf/s) cannot resolve. Lowering
 # this number lowers the reported max flow.
 ABORT_GF = 1650.0
-DEFAULT_ABORT_COUNTS = int(ABORT_GF * COUNTS_PER_GF)     # 329,328 at 1800 gf
+# The force abort, in counts. It has to come from the CONFIGURED counts_per_gf,
+# not the module default: everything else here (every reported force, the
+# variance abort, and Stage 3's own abort) already uses self.counts_per_gf.
+# Built from COUNTS_PER_GF instead, a cell configured at 178 counts/gf
+# aborted at 1650 x 201 / 178 = ~1863 gf, 93% of the cell's 2000 gf rating.
+def _default_abort_counts(counts_per_gf):
+    return int(ABORT_GF * counts_per_gf)
 
 # Backstop against a logic error dumping filament, not a budget. The real
 # budget is enforced per-step via e_left. A legitimate 12-flow up+down sweep
@@ -490,8 +496,9 @@ class QidiFlowBedSearch:
         hz = gcmd.get_float('HZ', 30., minval=5., maxval=77.)
         var_abort = gcmd.get_float('VARIANCE_ABORT', DEFAULT_VARIANCE_GF,
                                    minval=0.)
-        abort_counts = gcmd.get_int('ABORT_COUNTS', DEFAULT_ABORT_COUNTS,
-                                    minval=1000)
+        abort_counts = gcmd.get_int(
+            'ABORT_COUNTS', _default_abort_counts(self.counts_per_gf),
+            minval=1000)
         max_e = gcmd.get_float('MAX_E', DEFAULT_MAX_E_MM, above=0.)
         retract = gcmd.get_float('RETRACT', 2.0, minval=0., maxval=10.)
         wipe = gcmd.get_int('WIPE', 1, minval=0, maxval=1)
@@ -1120,8 +1127,9 @@ class QidiFlowBedSearch:
         hz = gcmd.get_float('HZ', 30., minval=5., maxval=77.)
         var_abort = gcmd.get_float('VARIANCE_ABORT', DEFAULT_VARIANCE_GF,
                                    minval=0.)
-        abort_counts = gcmd.get_int('ABORT_COUNTS', DEFAULT_ABORT_COUNTS,
-                                    minval=1000)
+        abort_counts = gcmd.get_int(
+            'ABORT_COUNTS', _default_abort_counts(self.counts_per_gf),
+            minval=1000)
         max_e = gcmd.get_float('MAX_E', DEFAULT_MAX_E_MM, above=0.)
         retract = gcmd.get_float('RETRACT', 2.0, minval=0., maxval=10.)
         wipe = gcmd.get_int('WIPE', 1, minval=0, maxval=1)

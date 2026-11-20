@@ -33,3 +33,7 @@ using this machine's own measured values rather than copying the X-Max 4's.
   and Stage 3 primes now end with a trip to X125 and back the
   `MOVE_TO_TRASH` way (via Y270). `qidi_flow_ramp.py`, `qidi_pa_measure.py`
   and their tests.
+- [2026-11-20 — Stage 1's force abort follows counts_per_gf](2026-11-20-force-abort.md) —
+  the abort was built from the module default (201), so a cell configured
+  at 178 stopped at ~1863 gf instead of 1650. `qidi_flow_ramp.py`,
+  `qidi_flow_bed_search.py` and their tests.
