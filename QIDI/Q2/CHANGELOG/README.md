@@ -33,3 +33,6 @@ using this machine's own measured values rather than copying the X-Max 4's.
   and Stage 3 primes now end with a trip to X125 and back the
   `MOVE_TO_TRASH` way (via Y270). `qidi_flow_ramp.py`, `qidi_pa_measure.py`
   and their tests.
+- [2026-11-20 — the .cfg no longer stops Klipper starting](2026-11-20-cfg-options.md) —
+  `park_x` and the wipe offsets were set as options that no module reads, so
+  Klipper refused to start. Now comments, plus `tests/test_cfg_options.py`.
