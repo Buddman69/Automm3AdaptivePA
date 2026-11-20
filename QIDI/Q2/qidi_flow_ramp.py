@@ -138,6 +138,27 @@ WIPE_SHORT_FRAC = 0.7
 WIPE_FEED_FAST = 10000
 WIPE_FEED_SLOW = 6000
 
+# Q2 chute flap. See CHANGELOG/2026-11-20-chute-flap.md.
+#
+# The Q2's purge chute has a spring flap that the toolhead holds SHUT while it
+# is anywhere from the park (X85) to X122 at Y287.5 (measured on a Q2,
+# 2026-11-20). The wiper strokes (X95-115) never get that far, so upstream
+# extruded every measurement onto a closed flap: the material piled up under
+# the nozzle and pressed back on it - on the load cell that IS the instrument.
+# Going to X125 (where QIDI's own CLEAR_NOZZLE ends) lets the flap open and the
+# purge fall into the bin; then back to the park for the next measurement.
+#
+# The way BACK must be MOVE_TO_TRASH's: out to Y270, across to the park, then
+# in to Y287.5 at F1500. Coming back sideways at Y287.5 (first version,
+# 2026-11-20) hit the chute: X skipped steps, Klipper still said X85, and the
+# next measurement extruded beside the chute. QIDI's MOVE_TO_TRASH never
+# crosses X112 at Y > 270 for the same reason.
+FLAP_RELEASE_X = 125.0
+FLAP_DWELL_S = 1.0
+FLAP_PARK_Y = 287.5
+FLAP_CLEAR_Y = 270.0
+FLAP_APPROACH_FEED = 1500
+
 # Slip detection, now armed by default. Baselines from the first two full ramps:
 # settled steps ran 5-13 gf of within-step sd, 22 gf at 19.87 mm3/s and 63 gf at
 # 25.00 mm3/s when the melt stopped keeping up. 35 gf catches a slipping drive
@@ -660,6 +681,23 @@ class QidiFlowRamp:
         """
         return 85.0
 
+    def _flap_lines(self, px):
+        # Q2 chute flap: see FLAP_RELEASE_X. Out along X at the
+        # park's Y (that releases the flap); back the MOVE_TO_TRASH way.
+        return ["G90",
+                "G1 X%.2f F%d" % (FLAP_RELEASE_X, WIPE_FEED_FAST),
+                "G4 P%d" % (int(FLAP_DWELL_S * 1000),),
+                "G1 Y%.2f F%d" % (FLAP_CLEAR_Y, WIPE_FEED_FAST),
+                "G1 X%.2f F%d" % (px, WIPE_FEED_FAST),
+                "G1 Y%.2f F%d" % (FLAP_PARK_Y, FLAP_APPROACH_FEED)]
+
+    def _release_flap(self, gcmd, toolhead):
+        # Q2 chute flap: retract, open the flap, back to the park.
+        self.gcode.run_script_from_command(
+            "M83\nG1 E-1.000 F1800\n" + "\n".join(self._flap_lines(
+                self._park_x())))
+        toolhead.wait_moves()
+
     def _wipe(self, gcmd, toolhead, lo, hi, passes, short_passes=None):
         # The silicone wiper beside the chute. Defaults match the X oscillation
         # QIDI's own CLEAR_NOZZLE_PLR uses (park_x + 8 to park_x + 27), but the
@@ -683,7 +721,8 @@ class QidiFlowRamp:
         for _ in range(int(short_passes)):
             lines.append("G1 X%.2f F%d" % (short_hi, WIPE_FEED_FAST))
             lines.append("G1 X%.2f F%d" % (lo, WIPE_FEED_SLOW))
-        lines.append("G1 X%.2f F%d" % (px, WIPE_FEED_SLOW))
+        # Q2 chute flap: end past X122 so the flap opens, then park.
+        lines.extend(self._flap_lines(px))
         self.gcode.run_script_from_command("\n".join(lines))
         toolhead.wait_moves()
         gcmd.respond_info("flow_ramp: wiped X%.1f-%.1f x%d then X%.1f-%.1f x%d,"
@@ -1253,6 +1292,13 @@ class QidiFlowRamp:
         if ok:
             if state['since_wipe'] >= SEARCH_WIPE_VOLUME_MM3:
                 state['wipe_now'] = True
+            else:
+                # Q2 chute flap: drop this measurement's purge into
+                # the bin before the next one. A pending wipe does it anyway.
+                try:
+                    self._release_flap(gcmd, toolhead)
+                except Exception:
+                    logging.exception("qidi_flow_ramp: flap release failed")
         else:
             # A failing flow could not clear what it was fed, so it is where
             # build-up concentrates. Always wipe before the next trial.
